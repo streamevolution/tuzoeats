@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Uber Eats Clone Ultimate Final Fixed</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        uber: { green: '#06C167', black: '#000000', gray: '#F6F6F6', dark: '#0F172A', lightGray: '#F6F6F6', red: '#EF4444' }
+                    },
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+                    },
+                    animation: {
+                        'shimmer': 'shimmer 1.5s infinite',
+                        'slideRight': 'slideRight 0.3s ease-out forwards',
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        shimmer: {
+                            '100%': { transform: 'translateX(100%)' },
+                        },
+                        slideRight: {
+                            '0%': { transform: 'translateX(-100%)' },
+                            '100%': { transform: 'translateX(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { -webkit-tap-highlight-color: transparent; }
+        .h-dynamic { height: 100vh; height: 100dvh; } 
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        .slide-up-sheet { animation: slideUpSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUpSheet { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .heart-beat { animation: heartBeat 0.3s; }
+        @keyframes heartBeat { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body class="bg-gray-200 h-dynamic flex flex-col items-center justify-center overflow-hidden font-sans">
+
+    <div id="app" class="w-full h-full max-w-md bg-white relative overflow-hidden flex flex-col shadow-2xl">
+        
+        <div id="loading" class="absolute inset-0 z-[60] bg-[#06C167] flex flex-col items-center justify-center text-white transition-opacity duration-500">
+            <h1 class="text-5xl font-extrabold tracking-tighter mb-4">Uber <span class="font-light">Eats</span></h1>
+            <i class="fas fa-circle-notch fa-spin text-2xl"></i>
+        </div>
+        
+        <div id="toast-container" class="absolute top-20 left-0 right-0 z-[60] pointer-events-none flex flex-col items-center gap-2 px-4"></div>
+
+        <div id="addressModal" class="absolute inset-0 z-50 bg-black/50 hidden flex-col justify-end backdrop-blur-sm transition-opacity">
+            <div class="bg-white w-full rounded-t-[20px] h-[85%] flex flex-col slide-up-sheet shadow-2xl">
+                <div class="p-4 flex items-center border-b border-gray-100">
+                    <button onclick="window.toggleAddressModal(false)" class="text-2xl text-black p-2"><i class="fas fa-times"></i></button>
+                    <h2 class="text-lg font-bold flex-1 text-center mr-8">Detalles de entrega</h2>
+                </div>
+                <div class="p-4 bg-white">
+                    <div class="bg-gray-100 p-3 rounded-xl flex items-center gap-3">
+                        <i class="fas fa-search text-black"></i>
+                        <input id="addressInput" type="text" placeholder="Ingresa una nueva dirección" class="bg-transparent w-full outline-none text-base font-medium placeholder-gray-500">
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 space-y-6">
+                    <div onclick="window.updateAddress('Ubicación actual')" class="flex items-center gap-4 cursor-pointer active:bg-gray-50 p-2 rounded-lg">
+                        <div class="bg-gray-200 w-10 h-10 rounded-full flex items-center justify-center"><i class="fas fa-location-arrow text-black"></i></div>
+                        <div><div class="font-bold text-black">Ubicación actual</div><div class="text-xs text-blue-600 font-bold">Usar GPS</div></div>
+                    </div>
+                </div>
+                <div class="p-4 border-t"><button onclick="window.confirmAddress()" class="w-full bg-black text-white py-4 rounded-xl font-bold text-lg">Listo</button></div>
+            </div>
+        </div>
+
+        <div id="orderDetailModal" class="absolute inset-0 z-[90] bg-black/50 hidden flex-col justify-end backdrop-blur-sm transition-opacity">
+            <div class="bg-white w-full rounded-t-[20px] h-[85%] flex flex-col slide-up-sheet shadow-2xl overflow-hidden">
+                <div class="p-4 flex items-center justify-between border-b border-gray-100 bg-white z-10">
+                    <h2 class="text-lg font-bold ml-2">Detalles del Pedido</h2>
+                    <button onclick="window.closeOrderDetails()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"><i class="fas fa-times text-black"></i></button>
+                </div>
+                <div id="orderDetailContent" class="flex-1 overflow-y-auto p-5 bg-white pb-10"></div>
+            </div>
+        </div>
+
+        <div id="transactionDetailModal" class="absolute inset-0 z-[55] bg-black/50 hidden flex-col justify-center items-center backdrop-blur-sm px-6">
+            <div class="bg-white w-full max-w-sm rounded-2xl slide-up-sheet shadow-2xl overflow-hidden relative">
+                <button onclick="window.closeTransactionDetails()" class="absolute top-3 right-3 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center z-10"><i class="fas fa-times text-black"></i></button>
+                <div id="transactionDetailContent" class="p-6 flex flex-col items-center text-center"></div>
+            </div>
+        </div>
+
+        <div id="driverMenuModal" class="absolute inset-0 z-[70] bg-black/50 hidden flex-col justify-start backdrop-blur-sm">
+            <div class="bg-white w-3/4 h-full shadow-2xl flex flex-col relative animate-slideRight">
+                <div class="bg-black p-6 pt-12 text-white">
+                    <div class="flex items-center gap-4 mb-4">
+                        <img id="driverMenuPhoto" src="" class="w-16 h-16 rounded-full object-cover border-2 border-white bg-gray-700">
+                        <div>
+                            <h2 id="driverNameMenu" class="font-bold text-xl">Conductor</h2>
+                            <div class="flex items-center gap-1 text-sm bg-gray-800 px-2 py-0.5 rounded-full inline-block">
+                                5.0 <i class="fas fa-star text-white text-[10px]"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4 space-y-2 flex-1 overflow-y-auto">
+                    <button onclick="window.showDriverVehicle()" class="w-full text-left p-3 hover:bg-gray-50 rounded flex items-center gap-4">
+                        <i class="fas fa-car text-gray-500 w-6"></i> <span>Vehículo</span>
+                    </button>
+                    <button onclick="window.showDriverHistory()" class="w-full text-left p-3 hover:bg-gray-50 rounded flex items-center gap-4">
+                        <i class="fas fa-check-circle text-gray-500 w-6"></i> <span>Pedidos Entregados</span>
+                    </button>
+                    <button onclick="alert('Configuración próximamente')" class="w-full text-left p-3 hover:bg-gray-50 rounded flex items-center gap-4">
+                        <i class="fas fa-cog text-gray-500 w-6"></i> <span>Configuración</span>
+                    </button>
+                </div>
+                <div class="p-4 border-t">
+                    <button onclick="window.logout()" class="w-full text-left p-3 text-red-600 hover:bg-red-50 rounded flex items-center gap-4 font-bold">
+                        <i class="fas fa-sign-out-alt w-6"></i> <span>Cerrar Sesión</span>
+                    </button>
+                </div>
+                <button onclick="window.toggleDriverMenu(false)" class="absolute top-4 right-4 text-white w-8 h-8 flex items-center justify-center"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="flex-1" onclick="window.toggleDriverMenu(false)"></div>
+        </div>
+
+        <div id="vehicleModal" class="absolute inset-0 z-[85] bg-black/50 hidden flex-col justify-center items-center backdrop-blur-sm px-6">
+            <div class="bg-white w-full max-w-sm rounded-2xl slide-up-sheet shadow-2xl overflow-hidden relative p-6">
+                <button onclick="document.getElementById('vehicleModal').classList.add('hidden'); document.getElementById('vehicleModal').classList.remove('flex')" class="absolute top-3 right-3 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"><i class="fas fa-times text-black"></i></button>
+                <h2 class="text-xl font-bold mb-4 text-center">Mi Vehículo</h2>
+                <div id="vehicleContent" class="space-y-4"></div>
+            </div>
+        </div>
+
+        <div id="driverHistoryModal" class="absolute inset-0 z-[85] bg-white hidden flex-col h-full w-full slide-up-sheet">
+            <div class="p-4 border-b border-gray-100 flex items-center gap-4">
+                <button onclick="document.getElementById('driverHistoryModal').classList.add('hidden'); document.getElementById('driverHistoryModal').classList.remove('flex')" class="text-xl"><i class="fas fa-arrow-left"></i></button>
+                <h2 class="text-lg font-bold">Historial de Entregas</h2>
+            </div>
+            <div id="driverHistoryContent" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50"></div>
+        </div>
+
+        <div id="driverRegModal" class="absolute inset-0 z-[80] bg-white hidden flex-col h-full w-full slide-up-sheet overflow-hidden">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-white z-10">
+                <h2 class="text-xl font-bold">Registro de Socio</h2>
+                <button onclick="window.closeDriverReg()" class="text-black"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 relative">
+                <div id="regStep1" class="fade-in">
+                    <h3 class="text-2xl font-bold mb-2">Información Personal</h3>
+                    <p class="text-sm text-gray-500 mb-6">Para comenzar, necesitamos tus datos básicos.</p>
+                    <div class="space-y-4">
+                        <input id="regName" placeholder="Nombre Completo" class="w-full p-3 bg-gray-50 border rounded-lg">
+                        <div class="flex gap-2">
+                            <input id="regAp1" placeholder="Primer Apellido" class="w-full p-3 bg-gray-50 border rounded-lg">
+                            <input id="regAp2" placeholder="Segundo Apellido" class="w-full p-3 bg-gray-50 border rounded-lg">
+                        </div>
+                        <div class="text-xs text-gray-500 font-bold uppercase ml-1">Fecha Nacimiento</div>
+                        <input id="regDob" type="date" class="w-full p-3 bg-gray-50 border rounded-lg">
+                        <input id="regCurp" placeholder="CURP" class="w-full p-3 bg-gray-50 border rounded-lg uppercase">
+                        <input id="regRfc" placeholder="RFC" class="w-full p-3 bg-gray-50 border rounded-lg uppercase">
+                    </div>
+                </div>
+                <div id="regStep2" class="hidden fade-in">
+                    <h3 class="text-2xl font-bold mb-2">Tu Vehículo</h3>
+                    <p class="text-sm text-gray-500 mb-6">¿Con qué vas a realizar las entregas?</p>
+                    <div class="space-y-4">
+                        <div class="text-xs text-gray-500 font-bold uppercase ml-1">Tipo de Vehículo</div>
+                        <select id="regVehType" class="w-full p-3 bg-gray-50 border rounded-lg outline-none">
+                            <option value="Moto">Motocicleta</option>
+                            <option value="Bici">Bicicleta</option>
+                            <option value="Auto">Automóvil</option>
+                        </select>
+                        <input id="regVehModel" placeholder="Marca y Modelo (Ej. Italika 150Z)" class="w-full p-3 bg-gray-50 border rounded-lg">
+                        <input id="regVehColor" placeholder="Color (Ej. Rojo)" class="w-full p-3 bg-gray-50 border rounded-lg">
+                        <input id="regVehPlate" placeholder="Placas del Vehículo" class="w-full p-3 bg-gray-50 border rounded-lg uppercase">
+                    </div>
+                </div>
+                <div id="regStep3" class="hidden fade-in">
+                    <h3 class="text-2xl font-bold mb-2">Documentación</h3>
+                    <p class="text-sm text-gray-500 mb-6">Sube fotos claras de tus documentos. (URL simulación)</p>
+                    <div class="space-y-3">
+                        <input id="docIneF" placeholder="URL Foto INE Frontal" class="w-full p-3 bg-gray-50 border rounded-lg text-sm">
+                        <input id="docIneB" placeholder="URL Foto INE Trasera" class="w-full p-3 bg-gray-50 border rounded-lg text-sm">
+                        <input id="docLicF" placeholder="URL Licencia Frontal" class="w-full p-3 bg-gray-50 border rounded-lg text-sm">
+                        <input id="docLicB" placeholder="URL Licencia Trasera" class="w-full p-3 bg-gray-50 border rounded-lg text-sm">
+                        <input id="docVeh" placeholder="URL Foto Vehículo (Placas visibles)" class="w-full p-3 bg-gray-50 border rounded-lg text-sm">
+                        <input id="docPlate" placeholder="URL Foto Placa (Solo un lado)" class="w-full p-3 bg-gray-50 border rounded-lg text-sm">
+                        <input id="docFace" placeholder="URL Foto Tuya (Fondo blanco, sin lentes)" class="w-full p-3 bg-gray-50 border rounded-lg text-sm">
+                        <div class="pt-4 border-t mt-4">
+                            <h4 class="font-bold mb-2">Pagos</h4>
+                            <input id="regBank" placeholder="Número de Cuenta / CLABE" type="number" class="w-full p-3 bg-gray-50 border rounded-lg text-sm">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-gray-100 bg-white">
+                <div class="flex gap-3">
+                    <button id="btnRegBack" onclick="window.prevRegStep()" class="hidden px-6 py-3 rounded-xl font-bold text-gray-500 bg-gray-100">Atrás</button>
+                    <button id="btnRegNext" onclick="window.nextRegStep()" class="flex-1 bg-black text-white py-3 rounded-xl font-bold text-lg">Siguiente</button>
+                    <button id="btnRegFinish" onclick="window.finishRegistration()" class="hidden flex-1 bg-uber-green text-white py-3 rounded-xl font-bold text-lg">Finalizar Registro</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="storeProductModal" class="absolute inset-0 z-[70] bg-black/50 hidden flex-col justify-end backdrop-blur-sm">
+            <div class="bg-white w-full h-[90%] rounded-t-2xl flex flex-col slide-up-sheet overflow-hidden">
+                <div class="flex justify-between items-center p-4 border-b bg-white z-10">
+                    <h2 class="font-bold text-lg">Gestión de Producto</h2>
+                    <button onclick="window.closeStoreProductModal()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-5 space-y-5 bg-gray-50">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nombre del artículo</label>
+                        <input id="spName" class="w-full p-3 bg-white border border-gray-300 rounded-lg outline-none focus:border-black font-medium">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Descripción</label>
+                        <textarea id="spDesc" rows="3" class="w-full p-3 bg-white border border-gray-300 rounded-lg outline-none focus:border-black text-sm"></textarea>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="flex-1">
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Precio ($)</label>
+                            <input id="spPrice" type="number" class="w-full p-3 bg-white border border-gray-300 rounded-lg outline-none focus:border-black font-bold">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">URL de Imagen</label>
+                        <div class="flex gap-2">
+                            <input id="spImg" class="flex-1 p-3 bg-white border border-gray-300 rounded-lg outline-none focus:border-black text-sm">
+                            <img id="spImgPrev" src="" class="w-12 h-12 rounded bg-gray-200 object-cover border">
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4 border-t bg-white flex gap-3">
+                    <button id="btnDeleteProd" onclick="window.deleteStoreProduct()" class="bg-red-50 text-red-500 px-4 py-3 rounded-lg font-bold text-sm border border-red-100 hidden"><i class="fas fa-trash-alt"></i></button>
+                    <button onclick="window.saveStoreProduct()" class="flex-1 bg-black text-white py-3 rounded-lg font-bold text-lg shadow-lg">Guardar</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="dynamic-content" class="flex-1 h-full w-full relative"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, addDoc, deleteDoc, query, where, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, orderBy, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+          apiKey: "AIzaSyAmIATs9InJI1YQGwB-EgEbln02HaGiTmo",
+          authDomain: "tuzoeats.firebaseapp.com",
+          projectId: "tuzoeats",
+          storageBucket: "tuzoeats.firebasestorage.app",
+          messagingSenderId: "528424231314",
+          appId: "1:528424231314:web:e0ce986cabb566f64c614b",
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = "eats-eats-v1";
+        const CREATOR_EMAIL = "mrandroidtutorialeshd@gmail.com";
+        const ROLES = { CREATOR: 'creator', STORE: 'store', DRIVER: 'driver', CLIENT: 'client' };
+
+        const CATEGORIES = [
+            { id: 'all', name: 'Todo', img: 'https://cdn-icons-png.flaticon.com/512/879/879757.png', color: 'bg-orange-100' },
+            { id: 'burgers', name: 'Burgers', img: 'https://cdn-icons-png.flaticon.com/512/3075/3075977.png', color: 'bg-red-100' },
+            { id: 'pizza', name: 'Pizza', img: 'https://cdn-icons-png.flaticon.com/512/1404/1404945.png', color: 'bg-yellow-100' },
+            { id: 'asian', name: 'Asiática', img: 'https://cdn-icons-png.flaticon.com/512/2252/2252075.png', color: 'bg-red-50' },
+            { id: 'dessert', name: 'Postres', img: 'https://cdn-icons-png.flaticon.com/512/3081/3081967.png', color: 'bg-pink-100' },
+            { id: 'tacos', name: 'Tacos', img: 'https://cdn-icons-png.flaticon.com/512/4359/4359642.png', color: 'bg-green-100' },
+        ];
+
+        let state = {
+            user: null, profile: null, view: 'loading', clientView: 'home', authMode: 'login', 
+            storeView: 'orders', storeTab: 'pending', // 'pending', 'active', 'history'
+            ui: { deliveryMode: 'delivery', selectedCategory: 'all', address: 'Ubicación actual', editingId: null, paymentMethod: null, minimizedOrder: false },
+            data: { restaurants: [], menu: [], cart: [], selectedRestaurant: null, favorites: [], adminRestaurants: [], ordersCache: [], walletCache: [], driverInfo: null, currentDriver: null, lastActiveOrderId: null },
+            listeners: []
+        };
+
+        let driverState = { isOnline: false }; 
+        let currentProduct = null;
+        let currentQty = 1;
+        let regStep = 1; 
+        let tempProductData = null; // Para edición en Store Panel
+
+        window.formatDate = (timestamp) => {
+            if (!timestamp) return 'Fecha pendiente';
+            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            return date.toLocaleDateString('es-MX', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        };
+        
+        window.formatTime = (timestamp) => {
+            if (!timestamp) return '--:--';
+            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            return date.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+        };
+
+        function render() {
+            const container = document.getElementById('dynamic-content');
+            if (!container) return;
+            container.innerHTML = '';
+            if (state.view === 'loading') return;
+            if (!state.user) { renderAuth(container); return; }
+            if (!state.profile) { container.innerHTML = '<div class="p-10 text-center">Cargando perfil...</div>'; return; }
+            try {
+                switch (state.profile.role) {
+                    case ROLES.CREATOR: renderCreatorPanel(container); break;
+                    case ROLES.STORE: renderStorePanel(container); break;
+                    case ROLES.DRIVER: renderDriverPanel(container); break;
+                    case ROLES.CLIENT: renderClientApp(container); break;
+                    default: container.innerHTML = '<div class="p-10 text-center">Error de perfil. <button onclick="window.logout()">Salir</button></div>';
+                }
+                window.attachModalEvents(); 
+            } catch (e) {
+                console.error(e);
+                container.innerHTML = '<div class="p-10 text-center text-red-500">Error en la vista. <button onclick="window.location.reload()">Recargar</button></div>';
+            }
+        }
+
+        // --- 1. CLIENTE ---
+        function renderClientApp(container) {
+            const view = state.clientView;
+            container.innerHTML = `
+                <div class="flex flex-col h-full bg-white relative fade-in font-sans">
+                    <div id="clientContent" class="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar pb-24 bg-white"></div>
+                    <nav class="absolute bottom-0 w-full bg-white border-t border-gray-100 flex justify-between items-end px-2 pb-2 pt-3 z-40 text-[10px] font-medium text-gray-400 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
+                        <button onclick="window.setClientView('home')" class="flex-1 flex flex-col items-center gap-1 h-12 justify-end pb-1 ${view === 'home' ? 'text-black' : ''}"><i class="fas fa-home text-xl mb-0.5 ${view === 'home' ? 'text-black' : 'text-gray-400'}"></i><span>Inicio</span></button>
+                        <button onclick="window.setClientView('browse')" class="flex-1 flex flex-col items-center gap-1 h-12 justify-end pb-1 ${view === 'browse' ? 'text-black' : 'hover:text-black'} transition"><i class="fas fa-search text-xl mb-0.5 ${view === 'browse' ? 'text-black' : 'text-gray-400'}"></i><span>Buscar</span></button>
+                        <div class="flex-1 relative flex flex-col items-center justify-end h-16 -mt-4 group cursor-pointer" onclick="window.handleCentralButton()">
+                            <div class="absolute -top-5 ${view === 'tracking' ? 'bg-green-600' : 'bg-uber-dark'} rounded-full w-14 h-14 flex items-center justify-center shadow-xl text-white border-[4px] border-white active:scale-95 transition-transform z-10"><i class="fas fa-bicycle text-xl"></i><div id="activeOrderDot" class="hidden absolute top-3 right-3 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-uber-dark"></div></div><span class="${view === 'tracking' ? 'text-green-600' : 'text-uber-dark'} font-bold mb-1">Repartidor</span>
+                        </div>
+                        <button onclick="window.setClientView('orders')" class="flex-1 flex flex-col items-center gap-1 h-12 justify-end pb-1 ${view === 'orders' ? 'text-black' : ''}"><i class="fas fa-receipt text-xl mb-0.5 ${view === 'orders' ? 'text-black' : 'text-gray-400'}"></i><span>Pedidos</span></button>
+                        <button onclick="window.setClientView('profile')" class="flex-1 flex flex-col items-center gap-1 h-12 justify-end pb-1 ${view === 'profile' ? 'text-black' : ''} hover:text-black transition"><i class="fas fa-user text-xl mb-0.5 ${view === 'profile' ? 'text-black' : 'text-gray-400'}"></i><span>Perfil</span></button>
+                    </nav>
+                </div>`;
+
+            const checkActive = onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'orders'), where('customerId', '==', state.user.uid)), (s) => {
+                const active = s.docs.some(d => ['pending','preparing','ready','delivering'].includes(d.data().status));
+                const dot = document.getElementById('activeOrderDot');
+                if(dot) { if(active) dot.classList.remove('hidden'); else dot.classList.add('hidden'); }
+            });
+            state.listeners.push(checkActive);
+
+            const content = document.getElementById('clientContent');
+            // ... (Contenido Cliente: Tracking, Cart, Home, Browse, Restaurant, Orders, Profile, Wallet)
+            // Se mantiene idéntico al original para ahorrar espacio aquí, pero funcionalmente completo.
+            if (view === 'tracking') {
+                content.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-400"><i class="fas fa-circle-notch fa-spin text-3xl mb-4 text-green-600"></i><p>Sincronizando...</p></div>`;
+                const unsub = onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'orders'), where('customerId', '==', state.user.uid)), (s) => {
+                    const activeOrder = s.docs.map(d => ({id:d.id, ...d.data()})).filter(o => ['pending','preparing','ready','delivering'].includes(o.status)).sort((a,b) => b.createdAt - a.createdAt)[0];
+                    if (!activeOrder) {
+                        if(state.profile.role === ROLES.DRIVER || state.profile.role === ROLES.CREATOR) { window.trySwitchToDriver(); } 
+                        else { content.innerHTML = `<div class="flex flex-col items-center justify-center h-full p-8 text-center fade-in"><div class="bg-gray-100 w-32 h-32 rounded-full flex items-center justify-center mb-6"><img src="https://cdn-icons-png.flaticon.com/512/11422/11422964.png" class="w-16 opacity-50"></div><h2 class="text-2xl font-bold text-black mb-2">No tienes pedidos activos</h2><p class="text-gray-500 mb-6">¡Pide algo delicioso ahora!</p><button onclick="window.setClientView('home')" class="bg-black text-white px-8 py-3 rounded-full font-bold shadow-lg active:scale-95 transition">Ir a Restaurantes</button></div>`; }
+                        return;
+                    }
+                    if (activeOrder.driverId && (!state.data.currentDriver || state.data.currentDriver.uid !== activeOrder.driverId)) {
+                        getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'drivers', activeOrder.driverId)).then(snap => { if (snap.exists()) { state.data.currentDriver = { uid: snap.id, ...snap.data() }; render(); } });
+                    }
+                    const orderTime = activeOrder.createdAt ? activeOrder.createdAt.toDate() : new Date();
+                    const arrivalTime = new Date(orderTime.getTime() + 25*60000);
+                    const timeStr = arrivalTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+                    if (activeOrder.status === 'ready' || activeOrder.status === 'delivering') {
+                         let visualHTML = '', statusTitle = '', statusSubtitle = '', driverName = 'Buscando...', driverInfo = 'Asignando conductor', driverImg = 'https://cdn-icons-png.flaticon.com/512/149/149071.png', barClass3='bg-gray-200', barClass4='bg-gray-200', showContactButtons = false;
+                        if (activeOrder.status === 'ready') {
+                            statusTitle = 'Tu orden está lista'; statusSubtitle = 'Buscando repartidor cercano'; barClass3 = 'bg-uber-green animate-pulse';
+                            visualHTML = `<div class="w-full h-full flex flex-col items-center justify-center bg-blue-50 relative overflow-hidden"><div class="absolute w-96 h-96 bg-blue-200 rounded-full opacity-20 animate-ping"></div><div class="absolute w-64 h-64 bg-blue-300 rounded-full opacity-20 animate-ping" style="animation-delay:0.2s"></div><div class="bg-white p-6 rounded-full shadow-xl z-10 relative"><i class="fas fa-bicycle text-5xl text-black"></i></div></div>`;
+                        } else {
+                            statusTitle = 'Repartidor en camino'; statusSubtitle = 'Llega pronto'; 
+                            if (state.data.currentDriver && state.data.currentDriver.registrationData) { const dInfo = state.data.currentDriver.registrationData; driverName = `${dInfo.name} ${dInfo.ap1}`; driverInfo = `5.0 • ${dInfo.vehicleModel}`; if(dInfo.face) driverImg = dInfo.face; }
+                            barClass3 = 'bg-uber-green'; barClass4 = 'bg-uber-green animate-pulse'; showContactButtons = true;
+                            visualHTML = `<div class="absolute inset-0 opacity-80" style="background-image: url('https://i.imgur.com/8yeK5Gq.png'); background-size: cover; background-position: center;"></div><svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 400 400" preserveAspectRatio="none"><path d="M 100 50 Q 250 100 200 350" stroke="#06C167" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round" class="drop-shadow-md" stroke-dasharray="10,5"/></svg><div class="absolute top-1/4 left-1/4 transform -translate-x-1/2 -translate-y-1/2 z-20"><div class="w-11 h-11 bg-white rounded-full shadow-[0_4px_15px_rgba(0,0,0,0.15)] flex items-center justify-center animate-bounce"><i class="fas fa-bicycle text-lg text-uber-green"></i></div></div><div class="absolute bottom-1/4 right-1/3 transform translate-x-1/2 z-10"><div class="w-9 h-9 bg-uber-black rounded-full shadow-lg flex items-center justify-center"><i class="fas fa-map-marker-alt text-white text-sm"></i></div></div>`;
+                        }
+                        content.innerHTML = `<div class="flex flex-col h-full bg-uber-lightGray relative fade-in overflow-y-auto overflow-x-hidden"><div class="relative w-full h-[45vh] min-h-[300px] shrink-0 bg-gray-200"><div class="absolute top-0 left-0 right-0 z-30 flex justify-between items-center px-4 pt-4"><button onclick="window.setClientView('home')" class="w-10 h-10 flex items-center justify-center active:scale-90 transition bg-white shadow-md rounded-full"><i class="fas fa-arrow-left text-xl text-black"></i></button><button class="px-4 h-10 rounded-full bg-white shadow-md font-bold text-sm text-black">Ayuda</button></div>${visualHTML}</div><div class="px-5 pt-6 pb-32 bg-white rounded-t-[25px] -mt-6 relative z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] flex-1 min-h-[50vh]"><div class="flex items-center gap-4 mb-6"><div class="w-12 h-12 bg-gray-100 rounded-full overflow-hidden border border-gray-50 shadow-sm shrink-0"><img src="${driverImg}" class="w-full h-full object-cover"></div><div class="flex-1 min-w-0"><h3 class="font-bold text-lg text-black mb-0.5 truncate">${driverName}</h3><div class="text-xs text-gray-500 flex items-center gap-1 truncate"><i class="fas fa-star text-yellow-500 text-[10px]"></i> <span class="font-medium text-black">4.9</span> • ${driverInfo}</div></div><div class="flex gap-2 shrink-0 ${!showContactButtons ? 'opacity-50 pointer-events-none' : ''}"><button class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-black"><i class="fas fa-comment-alt text-sm"></i></button><button class="w-10 h-10 bg-uber-green rounded-full flex items-center justify-center text-white shadow-md shadow-green-100"><i class="fas fa-phone-alt text-sm"></i></button></div></div><div class="flex justify-between items-center mb-6"><div><h2 class="text-xl font-bold text-black tracking-tight leading-tight">${statusTitle}</h2><p class="text-xs text-gray-500 mt-0.5">${statusSubtitle}</p></div><span class="bg-gray-100 text-black text-[11px] font-bold px-3 py-1.5 rounded-full">${timeStr}</span></div><div class="flex gap-1.5 h-1 w-full mb-8"><div class="flex-1 rounded-full h-full transition-all duration-500 bg-uber-green"></div><div class="flex-1 rounded-full h-full transition-all duration-500 bg-uber-green"></div><div class="flex-1 rounded-full h-full transition-all duration-500 ${barClass3}"></div><div class="flex-1 rounded-full h-full transition-all duration-500 ${barClass4}"></div></div><h3 class="font-bold text-base mb-4 text-black">Detalles de entrega</h3><div class="flex gap-4 items-start mb-8"><div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center shrink-0 mt-0.5"><i class="fas fa-map-marker-alt text-black text-sm"></i></div><div><p class="text-[10px] font-bold text-gray-500 uppercase mb-1 tracking-wider">Entregar en</p><h4 class="text-base font-bold text-black leading-tight mb-1">${state.ui.address || 'Ubicación actual'}</h4><p class="text-xs text-gray-500">Oficina / Casa</p><button class="mt-3 text-xs font-bold text-black bg-gray-100 px-4 py-2 rounded-full">Dejar en puerta</button></div></div></div></div>`;
+                    } else {
+                        let stageHTML = '', stageTitle = '', barHTML = '';
+                        if (activeOrder.status === 'pending') { stageTitle = 'Enviando tu orden...'; barHTML = `<div class="flex-1 rounded-full bg-uber-green h-full"></div><div class="flex-1 rounded-full bg-gray-200 h-full"></div><div class="flex-1 rounded-full bg-gray-200 h-full"></div><div class="flex-1 rounded-full bg-gray-200 h-full"></div>`; stageHTML = `<div class="relative z-10 flex flex-col items-center fade-in"><img src="https://cdn-icons-png.flaticon.com/512/2921/2921822.png" class="w-48 h-48 object-contain drop-shadow-xl mb-4 opacity-50 grayscale"><div class="bg-white/80 backdrop-blur px-4 py-2 rounded-full shadow-sm border border-gray-100 flex items-center gap-2"><div class="w-2 h-2 bg-yellow-500 rounded-full animate-ping"></div><span class="text-xs font-bold text-yellow-700 uppercase tracking-wide">Confirmando</span></div></div>`; } 
+                        else { stageTitle = `Preparando en ${activeOrder.restaurantName}...`; barHTML = `<div class="flex-1 rounded-full bg-uber-green h-full"></div><div class="flex-1 rounded-full bg-uber-green h-full"></div><div class="flex-1 rounded-full bg-gray-200 h-full"></div><div class="flex-1 rounded-full bg-gray-200 h-full"></div>`; stageHTML = `<div class="relative z-10 flex flex-col items-center fade-in"><div class="relative"><img src="https://cdn-icons-png.flaticon.com/512/1065/1065727.png" class="w-56 h-56 object-contain drop-shadow-xl mb-4"><div class="absolute top-0 left-10 animate-bounce" style="animation-duration: 2s">🍅</div><div class="absolute top-4 right-12 animate-bounce" style="animation-duration: 1.5s">🥬</div><div class="absolute top-10 left-1/2 animate-bounce" style="animation-duration: 1.8s">🧀</div></div><div class="bg-white/80 backdrop-blur px-4 py-2 rounded-full shadow-sm border border-gray-100 flex items-center gap-2"><div class="w-2 h-2 bg-orange-500 rounded-full animate-ping"></div><span class="text-xs font-bold text-orange-700 uppercase tracking-wide">Cocinando</span></div></div>`; }
+                        content.innerHTML = `<div class="flex flex-col h-full bg-white relative fade-in overflow-hidden"><div class="absolute top-0 left-0 right-0 z-30 flex justify-between items-center px-4 pt-4 pb-2 bg-gradient-to-b from-white via-white/90 to-transparent"><button onclick="window.setClientView('home')" class="w-10 h-10 flex items-center justify-center active:scale-90 transition bg-white shadow-sm rounded-full"><i class="fas fa-arrow-left text-xl text-black"></i></button></div><div class="px-5 mt-20 relative z-20"><h1 class="text-[26px] font-bold leading-tight mb-1 text-black tracking-tight shadow-white drop-shadow-md">${stageTitle}</h1><p class="text-sm font-medium text-gray-500 mb-6">Llegada estimada ${timeStr}</p><div class="flex gap-2 h-1 w-full mb-2">${barHTML}</div></div><div class="flex-1 flex items-center justify-center relative w-full h-full">${stageHTML}</div></div>`;
+                    }
+                });
+                state.listeners.push(unsub);
+            } else if (view === 'cart') {
+                const total = state.data.cart.reduce((a,b)=>a+parseFloat(b.price),0);
+                const walletBalance = state.profile.walletBalance || 0;
+                const method = state.ui.paymentMethod;
+                content.innerHTML = `<div class="p-5 min-h-screen bg-gray-50 relative"><div class="flex items-center gap-4 mb-6"><button onclick="window.setClientView('home')" class="text-2xl"><i class="fas fa-arrow-left"></i></button><h1 class="text-2xl font-bold">Carrito</h1></div>${state.data.cart.length === 0 ? '<div class="text-center text-gray-400 mt-20 flex flex-col items-center"><i class="fas fa-shopping-basket text-6xl mb-4 opacity-20"></i><p>Tu carrito está vacío</p></div>' : `<div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6"><div class="p-4 border-b font-bold flex justify-between items-center"><span class="text-lg">${state.data.cart[0].restaurantName}</span> <button onclick="state.data.cart=[];render()" class="text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded">Limpiar</button></div>${state.data.cart.map((i,x) => `<div class="p-4 flex justify-between border-b last:border-0 items-center"><span class="font-medium text-sm">${i.name}</span><div class="flex gap-4 items-center"><span class="font-bold text-sm">$${i.price}</span><i onclick="window.removeFromCart(${x})" class="fas fa-trash-alt text-red-400 cursor-pointer text-xs"></i></div></div>`).join('')}<div class="p-4 bg-gray-50 flex justify-between items-center"><span class="font-bold text-gray-600">Total a pagar</span><span class="font-bold text-xl text-black">$${total.toFixed(2)}</span></div></div><h3 class="font-bold text-lg mb-3 px-1">Método de Pago</h3><div class="space-y-3 pb-32"><div onclick="window.setPaymentMethod('cash')" class="bg-white p-4 rounded-xl shadow-sm border-2 cursor-pointer flex items-center gap-4 transition-all ${method === 'cash' ? 'border-uber-green bg-green-50' : 'border-transparent'}"><div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-700"><i class="fas fa-money-bill-wave"></i></div><div class="flex-1 font-bold text-sm">Efectivo</div>${method === 'cash' ? '<i class="fas fa-check-circle text-uber-green text-xl"></i>' : ''}</div><div onclick="window.setPaymentMethod('wallet')" class="bg-white p-4 rounded-xl shadow-sm border-2 cursor-pointer flex items-center gap-4 transition-all ${method === 'wallet' ? 'border-black bg-gray-50' : 'border-transparent'}"><div class="w-10 h-10 bg-black rounded-full flex items-center justify-center text-white"><i class="fas fa-wallet"></i></div><div class="flex-1"><div class="font-bold text-sm">TuzoEats Cash</div><div class="text-xs text-gray-500">Saldo: $${walletBalance.toFixed(2)}</div></div>${method === 'wallet' ? '<i class="fas fa-check-circle text-black text-xl"></i>' : ''}</div></div><div class="fixed bottom-[60px] left-0 right-0 p-4 bg-white border-t shadow-[0_-4px_15px_rgba(0,0,0,0.05)] z-30"><button onclick="window.placeOrder()" class="w-full bg-uber-green text-white py-4 rounded-xl font-bold text-lg shadow-lg active:scale-[0.98] transition flex justify-between px-6 disabled:opacity-50 disabled:cursor-not-allowed" ${!method ? 'disabled' : ''}><span>Pagar Orden</span><span>$${total.toFixed(2)}</span></button></div>`}</div>`;
+            } else if (view === 'home') {
+                 content.innerHTML = `<div class="sticky top-0 bg-white z-30 px-4 pt-4 pb-2 shadow-sm"><div class="flex justify-between items-start mb-4"><div onclick="window.toggleAddressModal(true)" class="flex flex-col cursor-pointer active:opacity-50 transition"><span class="text-xs text-gray-500 font-medium">Entregar ahora</span><div class="flex items-center gap-2 font-bold text-base text-black mt-0.5"><span id="addressLabel" class="truncate max-w-[200px]">${state.ui.address}</span> <i class="fas fa-chevron-down text-xs"></i></div></div><div onclick="window.setClientView('cart')" class="relative bg-gray-100 p-2.5 rounded-full cursor-pointer text-black hover:bg-gray-200 transition"><i class="fas fa-shopping-basket text-sm"></i>${state.data.cart.length ? `<span class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full border border-white font-bold">${state.data.cart.length}</span>` : ''}</div></div><div class="flex gap-4 overflow-x-auto no-scrollbar pb-2">${CATEGORIES.map(c => `<div onclick="window.setCategory('${c.id}')" class="flex flex-col items-center min-w-[72px] cursor-pointer active:scale-95 transition-transform"><div class="w-16 h-16 rounded-xl mb-2 flex items-center justify-center transition-all border ${state.ui.selectedCategory === c.id ? 'bg-gray-100 border-black' : 'bg-gray-50 border-transparent'}"><img src="${c.img}" class="w-9 h-9 object-contain"></div><span class="text-[11px] font-medium text-black truncate w-full text-center ${state.ui.selectedCategory === c.id ? 'font-bold':''}">${c.name}</span></div>`).join('')}</div></div><div class="p-4 space-y-6 bg-white min-h-screen"><h2 class="text-lg font-bold text-black mt-2">${state.ui.selectedCategory === 'all' ? 'Restaurantes' : CATEGORIES.find(x=>x.id===state.ui.selectedCategory).name}</h2><div id="restList" class="space-y-6 pb-10"></div></div>`;
+                const unsub = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'restaurants'), (snap) => {
+                    let rests = snap.docs.map(d => ({id:d.id, ...d.data()}));
+                    if(state.ui.selectedCategory !== 'all') rests = rests.filter(r => r.category === state.ui.selectedCategory);
+                    const list = document.getElementById('restList');
+                    if(list) list.innerHTML = rests.length ? rests.map(r => {
+                        const isFav = state.data.favorites.includes(r.id);
+                        const feeDisplay = (!r.deliveryFee || r.deliveryFee == 0) ? 'Envío Gratis' : `$${r.deliveryFee} Envío`;
+                        return `<div class="relative group fade-in mb-6"><div onclick="window.selectRestaurant('${r.id}')" class="relative h-44 w-full mb-3 cursor-pointer active:scale-[0.98] transition-transform duration-200"><img src="${r.image}" class="w-full h-full object-cover rounded-xl border border-gray-100 shadow-sm"><div class="absolute bottom-3 right-3 bg-white px-3 py-1 rounded-full text-[10px] font-bold text-black shadow-md border border-gray-100">${r.deliveryTime || '20-30 min'}</div><button onclick="event.stopPropagation(); window.toggleFavorite('${r.id}')" class="absolute top-3 right-3 bg-white/90 backdrop-blur p-2 rounded-full shadow w-9 h-9 flex items-center justify-center active:scale-90 transition-transform z-10"><i class="${isFav ? 'fas text-red-500 heart-beat' : 'far text-black'} fa-heart text-sm"></i></button></div><div onclick="window.selectRestaurant('${r.id}')" class="cursor-pointer"><div class="flex justify-between items-start"><div class="flex-1 pr-2"><h3 class="font-bold text-base text-black leading-tight mb-1 truncate">${r.name}</h3><div class="text-xs text-gray-500 flex items-center gap-1">${(!r.deliveryFee || r.deliveryFee == 0) ? '<i class="fas fa-ticket-alt text-uber-green"></i>' : ''}<span class="${(!r.deliveryFee || r.deliveryFee == 0) ? 'text-uber-green font-bold' : ''}">${feeDisplay}</span><span>•</span><span>${CATEGORIES.find(c=>c.id===r.category)?.name || r.category}</span></div></div><div class="bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-black shrink-0">${r.rating || '4.5'}</div></div></div></div>`;}).join('') : '<div class="text-center py-12 text-gray-400 opacity-50"><i class="fas fa-store-slash text-4xl mb-2"></i><p class="text-xs font-bold">No hay resultados</p></div>';
+                });
+                state.listeners.push(unsub);
+            } else if (view === 'browse') {
+                 content.innerHTML = `<div class="sticky top-0 bg-white z-30 px-4 py-3 shadow-sm"><div class="bg-gray-100 rounded-xl flex items-center px-4 py-3 gap-3"><i class="fas fa-search text-black text-lg"></i><input id="searchInput" type="text" placeholder="Comida, comestibles, bebidas, etc." class="bg-transparent w-full outline-none text-base font-medium placeholder-gray-500"></div></div><div class="p-4 pb-20 min-h-screen"><div id="browseDefault"><h2 class="font-bold text-xl mb-4 text-black">Principales categorías</h2><div class="grid grid-cols-2 gap-3">${CATEGORIES.filter(c=>c.id!=='all').map(c => `<div onclick="window.setCategory('${c.id}'); window.setClientView('home')" class="${c.color || 'bg-gray-100'} p-4 rounded-xl h-32 relative overflow-hidden cursor-pointer active:scale-95 transition"><span class="font-bold text-black text-lg block">${c.name}</span><img src="${c.img}" class="absolute bottom-0 right-0 w-16 h-16 object-contain -mb-2 -mr-2 opacity-90"></div>`).join('')}</div></div><div id="browseResults" class="hidden space-y-4"></div></div>`;
+                const searchInput = document.getElementById('searchInput');
+                if(searchInput) {
+                    searchInput.focus();
+                    const unsub = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'restaurants'), (snap) => {
+                        const allRests = snap.docs.map(d => ({id:d.id, ...d.data()}));
+                        searchInput.oninput = (e) => {
+                            const val = e.target.value.toLowerCase();
+                            const def = document.getElementById('browseDefault'); const res = document.getElementById('browseResults');
+                            if(val.length > 0) {
+                                def.classList.add('hidden'); res.classList.remove('hidden');
+                                const filtered = allRests.filter(r => r.name.toLowerCase().includes(val) || r.category.toLowerCase().includes(val));
+                                res.innerHTML = filtered.length === 0 ? '<div class="text-center py-10 text-gray-400">Sin resultados.</div>' : filtered.map(r => `<div onclick="window.selectRestaurant('${r.id}')" class="flex items-center gap-4 cursor-pointer border-b border-gray-100 pb-4"><img src="${r.image}" class="w-16 h-16 rounded-lg object-cover bg-gray-100"><div><div class="font-bold text-black">${r.name}</div><div class="text-xs text-gray-500">${r.category} • ${r.rating}★</div></div></div>`).join('');
+                            } else { def.classList.remove('hidden'); res.classList.add('hidden'); }
+                        };
+                    });
+                    state.listeners.push(unsub);
+                }
+            } else if (view === 'restaurant') {
+                const r = state.data.selectedRestaurant;
+                if(!r) { window.setClientView('home'); return; }
+                const feeDisplay = (!r.deliveryFee || r.deliveryFee == 0) ? 'Envío Gratis' : `$${r.deliveryFee} Envío`;
+                content.innerHTML = `
+                    <div class="relative bg-white min-h-screen pb-20">
+                        <div class="h-48 relative">
+                            <img src="${r.image}" class="w-full h-full object-cover">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                            <button onclick="window.setClientView('home')" class="absolute top-4 left-4 bg-white w-10 h-10 rounded-full shadow flex items-center justify-center active:scale-90 transition z-20"><i class="fas fa-arrow-left"></i></button>
+                            <div class="absolute bottom-4 left-4 right-4 text-white">
+                                <h1 class="text-3xl font-bold mb-1 shadow-black drop-shadow-md">${r.name}</h1>
+                                <p class="text-xs font-medium opacity-90">${r.category} • ${r.deliveryTime || '20-30 min'}</p>
+                            </div>
+                        </div>
+                        <div class="p-5 bg-white relative z-10 rounded-t-xl -mt-4">
+                            <div class="flex items-center gap-2 mb-6">
+                                <div class="bg-gray-100 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><i class="fas fa-star text-black text-[10px]"></i> ${r.rating}</div>
+                                <div class="text-xs text-gray-500">${feeDisplay}</div>
+                            </div>
+                            <h3 class="font-bold text-xl mb-4">Menú</h3>
+                            <div id="clientMenuList" class="space-y-6"><div class="py-10 text-center text-gray-400"><i class="fas fa-spinner fa-spin"></i> Cargando menú...</div></div>
+                        </div>
+                    </div>
+                    <div id="productModal" class="fixed inset-0 z-[70] bg-white hidden flex-col h-full w-full slide-up-sheet overflow-hidden">
+                        <button onclick="window.closeProductModal()" class="absolute top-4 left-4 z-20 bg-white/80 backdrop-blur w-10 h-10 rounded-full shadow flex items-center justify-center active:scale-90 transition"><i class="fas fa-times text-black"></i></button>
+                        <div class="h-64 w-full relative shrink-0"><img id="pmImage" src="" class="w-full h-full object-cover"><div class="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent h-20"></div></div>
+                        <div class="flex-1 overflow-y-auto p-5 pb-32">
+                            <h2 id="pmName" class="text-3xl font-bold mb-2 text-black leading-tight"></h2>
+                            <p id="pmDesc" class="text-gray-500 text-sm leading-relaxed mb-4"></p>
+                            <div class="font-bold text-xl text-black mb-6" id="pmPrice"></div>
+                            <div class="border-t border-b border-gray-100 py-4 mb-4"><h3 class="font-bold text-base mb-2">Instrucciones especiales</h3><textarea id="pmNotes" class="w-full bg-gray-50 rounded-lg p-3 text-sm outline-none border border-gray-200 focus:border-black transition h-24 resize-none" placeholder="Ej. Sin cebolla, salsa aparte..."></textarea></div>
+                        </div>
+                        <div class="absolute bottom-0 w-full bg-white border-t border-gray-100 p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-8">
+                            <div class="flex items-center gap-4">
+                                <div class="flex items-center gap-3 border border-gray-200 rounded-full px-4 py-3"><button onclick="window.updateProductQty(-1)" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center active:scale-90 transition disabled:opacity-50 text-xl font-bold">-</button><span id="pmQty" class="font-bold text-lg w-4 text-center">1</span><button onclick="window.updateProductQty(1)" class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center active:scale-90 transition text-xl font-bold">+</button></div>
+                                <button onclick="window.confirmAddToOrder()" class="flex-1 bg-uber-green text-white py-4 rounded-xl font-bold text-lg shadow-lg active:scale-[0.98] transition flex justify-between px-6"><span>Agregar</span><span id="pmBtnTotal"></span></button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                const unsub = onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'menu_items'), where('restaurantId', '==', r.id)), (s) => {
+                    const list = document.getElementById('clientMenuList');
+                    if(list) list.innerHTML = s.docs.map(d => { 
+                        const i = d.data(); 
+                        const safeItem = encodeURIComponent(JSON.stringify({id: d.id, ...i}));
+                        return `<div onclick="window.openProductModal('${safeItem}')" class="flex justify-between items-start border-b border-gray-100 pb-6 cursor-pointer active:opacity-70 transition group"><div class="flex-1 pr-4"><h4 class="font-bold text-base text-black mb-1 group-hover:text-uber-green transition-colors">${i.name}</h4><p class="text-sm text-gray-500 line-clamp-2 mb-2 leading-snug">${i.description || 'Sin descripción disponible.'}</p><div class="font-medium text-black">$${i.price}</div></div><div class="w-28 h-28 shrink-0 relative"><img src="${i.image}" class="w-full h-full object-cover rounded-xl bg-gray-100 shadow-sm"><div class="absolute -bottom-2 -right-2 bg-white rounded-full p-1 shadow-md border border-gray-100"><div class="bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center"><i class="fas fa-plus text-black text-xs"></i></div></div></div></div>`;
+                    }).join('');
+                });
+                state.listeners.push(unsub);
+            } else if (view === 'orders') {
+                content.innerHTML = `<div class="p-5 bg-white min-h-screen"><h1 class="text-3xl font-bold mb-6">Pedidos</h1><div id="orderHistory" class="space-y-6 pb-24"><div class="text-center text-gray-400 pt-10"><i class="fas fa-circle-notch fa-spin"></i> Cargando...</div></div></div>`;
+                const unsub = onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'orders'), where('customerId', '==', state.user.uid)), (s) => {
+                    const list = document.getElementById('orderHistory');
+                    if(list) {
+                        const orders = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => b.createdAt - a.createdAt);
+                        state.data.ordersCache = orders;
+                        if(orders.length === 0) { list.innerHTML = `<div class="flex flex-col items-center justify-center pt-10"><div class="bg-gray-100 p-6 rounded-full mb-4"><i class="fas fa-receipt text-4xl text-gray-400"></i></div><h3 class="font-bold text-lg">No tienes pedidos aún</h3><button onclick="window.setClientView('home')" class="bg-black text-white px-6 py-3 rounded-full font-bold text-sm mt-4">Ir a comprar</button></div>`; } 
+                        else {
+                            list.innerHTML = orders.map(o => {
+                                let statusText = 'En curso', statusColor = 'bg-green-100 text-green-800';
+                                if (o.status === 'pending') statusText = 'Enviado a tienda';
+                                else if (o.status === 'preparing') statusText = 'Preparando';
+                                else if (o.status === 'ready') statusText = 'Listo';
+                                else if (o.status === 'delivering') statusText = 'En camino';
+                                else if (o.status === 'delivered') { statusText = 'Entregado'; statusColor = 'bg-gray-100 text-gray-600'; }
+                                const dateStr = window.formatDate(o.createdAt);
+                                return `<div onclick="window.openOrderDetails('${o.id}')" class="flex flex-col border-b border-gray-100 pb-6 last:border-0 cursor-pointer active:bg-gray-50 transition p-2 -mx-2 rounded-lg"><div class="flex gap-4 mb-3"><div class="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center shrink-0 border border-gray-200"><i class="fas fa-store text-gray-400 text-xl"></i></div><div class="flex-1"><div class="flex justify-between items-start"><h3 class="font-bold text-base text-black">${o.restaurantName}</h3><span class="text-xs font-bold px-2 py-1 rounded ${statusColor}">${statusText}</span></div><div class="text-xs text-gray-500 mt-1">${o.items.length} artículos • $${o.total.toFixed(2)}</div><div class="text-[10px] text-gray-400 mt-1">${dateStr}</div></div></div></div>`;
+                            }).join('');
+                        }
+                    }
+                });
+                state.listeners.push(unsub);
+            } else if (view === 'profile') {
+                content.innerHTML = `<div class="p-4 bg-white min-h-screen slide-up-sheet"><div class="flex items-center gap-4 mb-8 pt-4"><div class="bg-gray-200 w-20 h-20 rounded-full flex items-center justify-center text-gray-500 text-3xl"><i class="fas fa-user"></i></div><div><h1 class="text-2xl font-bold">${state.profile.name || 'Usuario'}</h1><p class="text-sm text-green-600 font-bold">Uber One • Miembro</p></div></div><div class="flex gap-3 mb-8"><div class="flex-1 bg-gray-100 p-3 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 transition"><i class="fas fa-heart text-black text-xl"></i><span class="text-xs font-bold">Favoritos</span></div><div onclick="window.setClientView('wallet')" class="flex-1 bg-gray-100 p-3 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 transition"><i class="fas fa-wallet text-black text-xl"></i><span class="text-xs font-bold">Cartera</span></div><div onclick="window.setClientView('orders')" class="flex-1 bg-gray-100 p-3 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 transition"><i class="fas fa-receipt text-black text-xl"></i><span class="text-xs font-bold">Pedidos</span></div></div><div class="space-y-6"><div class="flex items-center gap-4 cursor-pointer"><i class="fas fa-tag w-6 text-center text-gray-700"></i><span class="flex-1 font-medium text-black">Promociones</span></div><div class="flex items-center gap-4 cursor-pointer"><i class="fas fa-life-ring w-6 text-center text-gray-700"></i><span class="flex-1 font-medium text-black">Ayuda</span></div><div onclick="window.logout()" class="flex items-center gap-4 cursor-pointer mt-8 pt-8 border-t"><i class="fas fa-sign-out-alt w-6 text-center text-red-500"></i><span class="flex-1 font-medium text-red-500">Cerrar sesión</span></div></div><div class="mt-8 p-3 bg-gray-50 rounded text-center"><p class="text-xs text-gray-400 mb-1">Tu ID de Usuario (Para roles)</p><p class="text-xs font-mono select-all bg-white border p-1 rounded">${state.user.uid}</p></div></div>`;
+            } else if (view === 'wallet') {
+                const balance = state.profile.walletBalance || 0;
+                content.innerHTML = `<div class="p-4 bg-gray-50 min-h-screen relative"><div class="flex items-center gap-4 mb-6"><button onclick="window.setClientView('profile')" class="text-2xl"><i class="fas fa-arrow-left"></i></button><h1 class="text-xl font-bold">Cartera</h1></div><div class="bg-black text-white p-6 rounded-2xl shadow-lg mb-6 relative overflow-hidden"><div class="relative z-10"><p class="text-sm text-gray-400 mb-1">TuzoEats Cash</p><h2 class="text-4xl font-bold mb-4">$${balance.toFixed(2)}</h2><div class="flex gap-2"><button onclick="document.getElementById('topUpModal').classList.remove('hidden'); document.getElementById('topUpModal').classList.add('flex')" class="bg-uber-green text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-green-600 transition">Cargar Saldo</button></div></div><div class="absolute -right-4 -bottom-10 text-gray-800 opacity-30"><i class="fas fa-wallet text-9xl"></i></div></div><h3 class="font-bold text-lg mb-3">Actividad reciente</h3><div id="walletHistory" class="space-y-3 pb-10"><div class="text-center text-gray-400 py-8 text-sm"><i class="fas fa-circle-notch fa-spin"></i> Cargando movimientos...</div></div></div><div id="topUpModal" class="fixed inset-0 bg-black/50 hidden z-50 flex-col justify-end backdrop-blur-sm"><div class="bg-white w-full rounded-t-2xl p-5 slide-up-sheet h-[85%] flex flex-col"><div class="flex justify-between items-center mb-6"><h2 class="font-bold text-xl">Cargar Saldo</h2><button onclick="document.getElementById('topUpModal').classList.add('hidden'); document.getElementById('topUpModal').classList.remove('flex'); document.getElementById('step2').classList.add('hidden'); document.getElementById('step1').classList.remove('hidden')" class="text-gray-500 text-2xl"><i class="fas fa-times"></i></button></div><div id="step1" class="flex-1"><label class="block text-sm font-bold text-gray-600 mb-2">Monto a recargar</label><input id="topUpAmount" type="number" class="w-full p-4 bg-gray-100 rounded-xl text-2xl font-bold outline-none mb-6" placeholder="$0.00"><label class="block text-sm font-bold text-gray-600 mb-2">Método de pago</label><div class="space-y-3 mb-6"><label class="flex items-center gap-3 p-4 border rounded-xl cursor-pointer active:bg-gray-50"><input type="radio" name="payMethod" value="deposito" class="accent-black w-5 h-5" checked><div class="flex-1"><div class="font-bold">Depósito en Efectivo</div><div class="text-xs text-gray-500">Oxxo, 7Eleven, Farmacias</div></div><i class="fas fa-money-bill-wave text-green-600 text-xl"></i></label><label class="flex items-center gap-3 p-4 border rounded-xl cursor-pointer active:bg-gray-50"><input type="radio" name="payMethod" value="transferencia" class="accent-black w-5 h-5"><div class="flex-1"><div class="font-bold">Transferencia SPEI</div><div class="text-xs text-gray-500">Cualquier banco</div></div><i class="fas fa-university text-blue-600 text-xl"></i></label></div><button onclick="window.confirmTopUp()" class="w-full bg-black text-white py-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition">Continuar</button></div><div id="step2" class="hidden flex-1 flex-col space-y-6"></div></div></div>`;
+                const unsub = onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'topups'), where('uid', '==', state.user.uid)), (s) => {
+                    const listContainer = document.getElementById('walletHistory');
+                    if (!listContainer) return;
+                    const topups = s.docs.map(d => ({id: d.id, ...d.data()})).sort((a, b) => b.createdAt - a.createdAt);
+                    state.data.walletCache = topups;
+                    if (topups.length === 0) { listContainer.innerHTML = '<div class="text-center text-gray-400 py-8 text-sm">No hay movimientos recientes</div>'; } 
+                    else { listContainer.innerHTML = topups.map(t => { 
+                        let statusConfig = { pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800', iconColor: 'text-gray-400' }, approved: { label: 'Aprobado', color: 'bg-green-100 text-green-800', iconColor: 'text-green-600' }, cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-800', iconColor: 'text-red-500' } }; 
+                        const st = statusConfig[t.status] || statusConfig.pending; 
+                        const methodLabel = t.method === 'deposito' ? 'Depósito en Efectivo' : 'Transferencia SPEI'; 
+                        const iconClass = t.method === 'deposito' ? 'fa-money-bill-wave' : 'fa-university'; 
+                        const dateStr = window.formatDate(t.createdAt);
+                        return `<div onclick="window.openTransactionDetails('${t.id}')" class="bg-white p-4 rounded-xl border border-gray-100 flex items-center justify-between shadow-sm cursor-pointer active:bg-gray-50 transition"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center ${st.iconColor}"><i class="fas ${iconClass}"></i></div><div><div class="font-bold text-sm text-black">Recarga de Saldo</div><div class="text-xs text-gray-500">${methodLabel} • ${dateStr}</div></div></div><div class="text-right"><div class="font-bold text-black mb-1">+$${t.amount}</div><span class="text-[10px] font-bold px-2 py-0.5 rounded ${st.color}">${st.label}</span></div></div>`; }).join(''); }
+                });
+                state.listeners.push(unsub);
+            }
+        }
+
+        function renderCreatorPanel(container) { 
+            container.innerHTML = `<div class="flex flex-col h-full bg-gray-50"><header class="bg-white p-4 shadow-sm flex justify-between items-center z-10"><h1 class="font-bold text-xl text-gray-800">Panel Admin</h1><button onclick="window.logout()" class="text-red-500 text-xs font-bold border border-red-200 px-3 py-1 rounded-full hover:bg-red-50">SALIR</button></header><div class="p-4 flex-1 overflow-y-auto"><div class="bg-white p-5 rounded-xl shadow-sm mb-6 border border-gray-100 transition-all ${state.ui.editingId ? 'ring-2 ring-blue-500' : ''}"><div class="flex justify-between items-center mb-4"><h3 class="font-bold text-lg text-black flex items-center gap-2"><i class="fas ${state.ui.editingId ? 'fa-pen text-blue-500' : 'fa-store text-uber-green'}"></i> ${state.ui.editingId ? 'Editar' : 'Nuevo'} Restaurante</h3>${state.ui.editingId ? `<button onclick="window.cancelEdit()" class="text-xs text-gray-400 font-bold underline">Cancelar</button>` : ''}</div><div class="space-y-3"><div><label class="text-xs font-bold text-gray-500 uppercase">Nombre</label><input id="nName" placeholder="Ej. McDonald's" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-black transition"></div><div class="flex gap-3"><div class="flex-1"><label class="text-xs font-bold text-gray-500 uppercase">Imagen URL</label><input id="nImg" placeholder="https://..." class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-black transition"></div><div class="w-1/3"><label class="text-xs font-bold text-gray-500 uppercase">Categoría</label><select id="nCat" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-black transition h-[46px]">${CATEGORIES.filter(c => c.id !== 'all').map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select></div></div><div class="grid grid-cols-2 gap-3"><div><label class="text-xs font-bold text-gray-500 uppercase">Tiempo (Min)</label><input id="nTime" placeholder="Ej. 15-25 min" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-black transition"></div><div><label class="text-xs font-bold text-gray-500 uppercase">Rate (0-5)</label><input id="nRate" type="number" step="0.1" max="5" placeholder="4.8" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-black transition"></div></div><div class="grid grid-cols-2 gap-3"><div><label class="text-xs font-bold text-gray-500 uppercase">Envío ($)</label><input id="nFee" type="number" placeholder="0 = Gratis" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-black transition"></div><div><label class="text-xs font-bold text-gray-500 uppercase">Precio</label><select id="nPrice" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none h-[46px]"><option value="$">$ Económico</option><option value="$$">$$ Moderado</option><option value="$$$">$$$ Caro</option></select></div></div><button onclick="window.saveRest()" class="w-full text-white py-4 rounded-lg font-bold text-sm mt-2 transition shadow-lg ${state.ui.editingId ? 'bg-blue-600 hover:bg-blue-700' : 'bg-black hover:bg-gray-800'}">${state.ui.editingId ? 'ACTUALIZAR DATOS' : 'PUBLICAR RESTAURANTE'}</button></div></div><div class="bg-white p-5 rounded-xl shadow-sm mb-6 border border-gray-100 border-l-4 border-l-blue-500"><h3 class="font-bold text-lg mb-4 text-black flex items-center gap-2"><i class="fas fa-users text-blue-500"></i> Gestión de Personal</h3><input id="targetUid" placeholder="Pegar UID del Usuario aquí" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none mb-3 font-mono text-sm focus:border-blue-500 transition"><div class="mb-4"><label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Para Dueño de Tienda:</label><select id="selAvailableRest" class="w-full p-2 bg-gray-100 border-none rounded text-sm mb-2 outline-none text-gray-700"><option value="">Cargando disponibles...</option></select><button onclick="window.assignStoreRole()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold text-xs flex flex-col items-center justify-center gap-1 hover:bg-blue-700 shadow-md"><i class="fas fa-store text-lg"></i> Asignar Dueño</button></div><div class="border-t pt-3"><label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Para Repartidor:</label><select id="selDriverRest" class="w-full p-2 bg-gray-100 border-none rounded text-sm mb-2 outline-none text-gray-700"><option value="all">Global (Todos los restaurantes)</option></select><button onclick="window.assignDriverRole()" class="w-full bg-uber-dark text-white py-3 rounded-lg font-bold text-xs flex flex-col items-center justify-center gap-1 hover:bg-gray-800 shadow-md"><i class="fas fa-bicycle text-lg"></i> Asignar Repartidor</button></div></div><h3 class="font-bold text-xs text-gray-400 uppercase mb-2 tracking-wider">Solicitudes de Repartidores</h3><div id="adminPendingDrivers" class="space-y-3 pb-6">Cargando...</div><h3 class="font-bold text-xs text-gray-400 uppercase mb-2 tracking-wider">Solicitudes de Saldo</h3><div id="adminTopupsList" class="space-y-3 pb-6">Cargando...</div><h3 class="font-bold text-xs text-gray-400 uppercase mb-2 tracking-wider">Lista de Restaurantes</h3><div id="adminRestList" class="space-y-3 pb-6">Cargando...</div><h3 class="font-bold text-xs text-gray-400 uppercase mb-2 tracking-wider">Lista de Repartidores</h3><div id="adminDriverList" class="space-y-3 pb-10">Cargando...</div></div></div>`;
+            if (state.ui.editingId && state.tempEditData) { const r = state.tempEditData; setTimeout(() => { document.getElementById('nName').value = r.name; document.getElementById('nImg').value = r.image; document.getElementById('nCat').value = r.category; document.getElementById('nTime').value = r.deliveryTime || ''; document.getElementById('nRate').value = r.rating || ''; document.getElementById('nFee').value = r.deliveryFee || ''; document.getElementById('nPrice').value = r.priceRange || '$'; }, 50); }
+            state.listeners.push(onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'restaurants'), orderBy('createdAt', 'desc')), s => {
+                state.data.adminRestaurants = s.docs.map(d => ({id: d.id, ...d.data()}));
+                const list = document.getElementById('adminRestList');
+                if(list) list.innerHTML = state.data.adminRestaurants.map(r => `<div class="bg-white p-3 rounded-lg border border-gray-100 flex items-center justify-between shadow-sm"><div class="flex gap-3 items-center overflow-hidden"><img src="${r.image}" class="w-12 h-12 rounded object-cover bg-gray-100 shrink-0"><div class="min-w-0"><div class="font-bold text-sm truncate text-black">${r.name}</div><div class="text-[10px] text-gray-400 font-mono truncate max-w-[120px]">${r.id}</div><div class="text-[10px] text-blue-500">${r.ownerId ? 'Dueño Asignado' : 'Sin Dueño'}</div></div></div><div class="flex gap-2 pl-2"><button onclick="window.editRest('${r.id}')" class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition"><i class="fas fa-pencil-alt text-xs"></i></button><button onclick="window.deleteRest('${r.id}')" class="w-8 h-8 rounded-full bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition"><i class="fas fa-trash-alt text-xs"></i></button></div></div>`).join('');
+                const driverSelect = document.getElementById('selDriverRest');
+                if(driverSelect) { let opts = '<option value="all">Global (Todos los restaurantes)</option>'; opts += state.data.adminRestaurants.map(r => `<option value="${r.id}">${r.name}</option>`).join(''); driverSelect.innerHTML = opts; }
+            }));
+            state.listeners.push(onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'restaurants'), where('ownerId', '==', null)), s => {
+                const select = document.getElementById('selAvailableRest');
+                if(select) { const available = s.docs.map(d => ({id: d.id, ...d.data()})); select.innerHTML = available.length === 0 ? '<option value="">No hay restaurantes disponibles</option>' : '<option value="">-- Selecciona Restaurante --</option>' + available.map(r => `<option value="${r.id}">${r.name}</option>`).join(''); }
+            }));
+            state.listeners.push(onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'drivers'), s => {
+                const list = document.getElementById('adminDriverList'); if(list) { if(s.empty) { list.innerHTML = '<p class="text-gray-400 text-xs text-center">No hay repartidores.</p>'; return; } list.innerHTML = s.docs.map(d => { const dr = d.data(); let sn = "Global (Todos)"; if(dr.scope !== 'all') { const r = state.data.adminRestaurants.find(x => x.id === dr.scope); sn = r ? r.name : 'Desconocido'; } return `<div class="bg-white p-3 rounded-lg border border-gray-100 flex gap-3 items-center shadow-sm"><div class="bg-uber-dark w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0"><i class="fas fa-bicycle text-sm"></i></div><div class="min-w-0 overflow-hidden"><div class="font-bold text-sm truncate text-black">Repartidor</div><div class="text-[10px] text-gray-400 font-mono truncate mb-1">ID: ${dr.uid}</div><div class="text-[10px] bg-gray-100 px-2 py-0.5 rounded inline-block font-bold text-gray-600">Asignado a: <span class="text-blue-600">${sn}</span></div></div></div>`; }).join(''); }
+            }));
+            state.listeners.push(onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'drivers'), where('registrationStatus', '==', 'pending')), s => {
+                const list = document.getElementById('adminPendingDrivers');
+                if(list) {
+                    if(s.empty) { list.innerHTML = '<p class="text-gray-400 text-xs text-center">No hay solicitudes pendientes.</p>'; return; }
+                    list.innerHTML = s.docs.map(d => { 
+                        const dr = d.data(); 
+                        const info = dr.registrationData;
+                        return `<div class="bg-white p-4 rounded-lg border border-l-4 border-l-yellow-500 shadow-sm mb-2"><h4 class="font-bold text-sm mb-1">${info.name} ${info.ap1}</h4><p class="text-xs text-gray-500 mb-2">${info.vehicleType} • ${info.vehicleModel}</p><div class="grid grid-cols-2 gap-2 mb-3"><a href="${info.ineFront}" target="_blank" class="text-[10px] text-blue-600 underline">INE Front</a><a href="${info.face}" target="_blank" class="text-[10px] text-blue-600 underline">Foto Rostro</a></div><button onclick="window.approveDriver('${d.id}')" class="w-full bg-green-600 text-white px-3 py-2 rounded text-xs font-bold hover:bg-green-700">APROBAR REGISTRO</button></div>`;
+                    }).join('');
+                }
+            }));
+            state.listeners.push(onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'topups'), where('status', '==', 'pending')), s => {
+                const list = document.getElementById('adminTopupsList'); if(list) { if(s.empty) { list.innerHTML = '<p class="text-gray-400 text-xs text-center">No hay solicitudes pendientes.</p>'; return; } list.innerHTML = s.docs.map(d => { const t = d.data(); return `<div class="bg-white p-3 rounded-lg border border-l-4 border-l-orange-500 shadow-sm flex justify-between items-center"><div><div class="font-bold text-sm">${t.name}</div><div class="text-xs text-gray-500">${t.method} • $${t.amount}</div></div><button onclick="window.approveTopUp('${d.id}', '${t.uid}', ${t.amount})" class="bg-green-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-green-700">Aprobar</button></div>`; }).join(''); }
+            }));
+        }
+
+        // --- 2. STORE PANEL (REMASTERIZADO / CLON UBER EATS MANAGER) ---
+        function renderStorePanel(container) {
+            if(!state.profile || !state.profile.storeId) {
+                container.innerHTML = `<div class="p-10 text-center flex flex-col items-center justify-center h-full"><i class="fas fa-store-slash text-4xl text-gray-300 mb-4"></i><p class="text-gray-500">No tienes un restaurante asignado.</p><button onclick="window.logout()" class="mt-6 text-red-500 font-bold">Cerrar Sesión</button></div>`;
+                return;
+            }
+
+            const view = state.storeView || 'orders'; // 'orders', 'menu', 'insights'
+            const tab = state.storeTab || 'pending'; // 'pending', 'active', 'history'
+
+            container.innerHTML = `
+                <div class="flex flex-col h-full bg-[#F6F6F6] font-sans">
+                    <header class="bg-black text-white px-5 py-4 shadow-md flex justify-between items-center z-20 sticky top-0">
+                        <div class="flex items-center gap-3">
+                            <button class="text-white text-xl"><i class="fas fa-bars"></i></button>
+                            <div>
+                                <h1 class="font-bold text-lg leading-none tracking-tight">Uber <span class="font-light">Eats</span> Manager</h1>
+                                <div id="storeNameDisplay" class="text-xs text-gray-400 mt-0.5 font-medium truncate max-w-[150px]">Cargando...</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                             <div class="bg-green-900/50 border border-green-800 px-2 py-1 rounded text-[10px] font-bold text-green-400 flex items-center gap-1">
+                                <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div> ABIERTO
+                             </div>
+                             <button onclick="window.logout()" class="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center text-xs hover:bg-gray-700"><i class="fas fa-sign-out-alt"></i></button>
+                        </div>
+                    </header>
+
+                    <div class="bg-white shadow-sm border-b border-gray-200 px-2 flex z-10">
+                        <button onclick="window.setStoreView('orders')" class="flex-1 py-4 text-sm font-bold relative transition-colors ${view === 'orders' ? 'text-black' : 'text-gray-500 hover:text-gray-700'}">
+                            <i class="fas fa-receipt mr-1 text-lg mb-1 block sm:inline"></i> Pedidos
+                            ${view === 'orders' ? '<div class="absolute bottom-0 left-0 right-0 h-1 bg-black rounded-t-full mx-4"></div>' : ''}
+                        </button>
+                        <button onclick="window.setStoreView('menu')" class="flex-1 py-4 text-sm font-bold relative transition-colors ${view === 'menu' ? 'text-black' : 'text-gray-500 hover:text-gray-700'}">
+                            <i class="fas fa-hamburger mr-1 text-lg mb-1 block sm:inline"></i> Menú
+                            ${view === 'menu' ? '<div class="absolute bottom-0 left-0 right-0 h-1 bg-black rounded-t-full mx-4"></div>' : ''}
+                        </button>
+                        <button onclick="window.setStoreView('insights')" class="flex-1 py-4 text-sm font-bold relative transition-colors ${view === 'insights' ? 'text-black' : 'text-gray-500 hover:text-gray-700'}">
+                            <i class="fas fa-chart-line mr-1 text-lg mb-1 block sm:inline"></i> Resumen
+                            ${view === 'insights' ? '<div class="absolute bottom-0 left-0 right-0 h-1 bg-black rounded-t-full mx-4"></div>' : ''}
+                        </button>
+                    </div>
+
+                    <div class="flex-1 overflow-hidden relative">
+                        <div id="viewOrders" class="h-full flex flex-col ${view === 'orders' ? '' : 'hidden'}">
+                            <div class="bg-white border-b border-gray-200 flex p-1 gap-1 overflow-x-auto no-scrollbar">
+                                <button onclick="window.setStoreTab('pending')" class="flex-1 min-w-[100px] py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors ${tab === 'pending' ? 'bg-black text-white shadow-md' : 'bg-gray-100 text-gray-500'}">
+                                    Nuevos <span id="badgePending" class="hidden w-2 h-2 bg-red-500 rounded-full"></span>
+                                </button>
+                                <button onclick="window.setStoreTab('active')" class="flex-1 min-w-[100px] py-2 rounded-lg text-xs font-bold transition-colors ${tab === 'active' ? 'bg-black text-white shadow-md' : 'bg-gray-100 text-gray-500'}">
+                                    En Curso
+                                </button>
+                                <button onclick="window.setStoreTab('history')" class="flex-1 min-w-[100px] py-2 rounded-lg text-xs font-bold transition-colors ${tab === 'history' ? 'bg-black text-white shadow-md' : 'bg-gray-100 text-gray-500'}">
+                                    Listos/Fin
+                                </button>
+                            </div>
+                            <div id="storeOrdersList" class="flex-1 overflow-y-auto p-4 space-y-4 bg-[#F6F6F6]">
+                                <div class="flex flex-col items-center justify-center h-64 text-gray-400"><i class="fas fa-spinner fa-spin text-2xl"></i></div>
+                            </div>
+                        </div>
+
+                        <div id="viewMenu" class="h-full flex flex-col ${view === 'menu' ? '' : 'hidden'}">
+                             <div class="p-4 bg-white border-b flex justify-between items-center">
+                                <h2 class="font-bold text-xl text-black">Artículos</h2>
+                                <button onclick="window.openStoreProductModal()" class="bg-black text-white px-4 py-2 rounded-full text-sm font-bold shadow hover:bg-gray-800 transition">
+                                    <i class="fas fa-plus mr-1"></i> Agregar
+                                </button>
+                             </div>
+                             <div id="storeMenuList" class="flex-1 overflow-y-auto p-4 space-y-3 bg-[#F6F6F6]">
+                                <div class="text-center py-10 text-gray-400">Cargando menú...</div>
+                             </div>
+                        </div>
+
+                        <div id="viewInsights" class="h-full flex flex-col p-5 overflow-y-auto ${view === 'insights' ? '' : 'hidden'}">
+                            <h2 class="font-bold text-2xl text-black mb-4">Resumen de hoy</h2>
+                            <div class="grid grid-cols-2 gap-4 mb-6">
+                                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                                    <div class="text-gray-500 text-xs font-bold uppercase mb-1">Ventas</div>
+                                    <div id="statSales" class="text-2xl font-bold text-black">$0.00</div>
+                                </div>
+                                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                                    <div class="text-gray-500 text-xs font-bold uppercase mb-1">Pedidos</div>
+                                    <div id="statOrders" class="text-2xl font-bold text-black">0</div>
+                                </div>
+                            </div>
+                            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 mb-4 flex items-center justify-between">
+                                <div>
+                                    <div class="text-gray-500 text-xs font-bold uppercase mb-1">Calificación</div>
+                                    <div id="statRating" class="text-2xl font-bold text-black flex items-center gap-2">
+                                        4.9 <i class="fas fa-star text-yellow-400 text-lg"></i>
+                                    </div>
+                                </div>
+                                <div class="h-12 w-12 bg-green-50 rounded-full flex items-center justify-center text-green-600 text-xl"><i class="fas fa-thumbs-up"></i></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'restaurants', state.profile.storeId)).then(snap => {
+                const el = document.getElementById('storeNameDisplay');
+                if(snap.exists() && el) {
+                    const d = snap.data();
+                    el.innerText = d.name;
+                    const rt = document.getElementById('statRating');
+                    if(rt) rt.innerHTML = `${d.rating || 'New'} <i class="fas fa-star text-yellow-400 text-lg"></i>`;
+                }
+            }).catch(console.error);
+
+            const unsubOrders = onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'orders'), where('restaurantId', '==', state.profile.storeId)), s => {
+                const allOrders = s.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => b.createdAt - a.createdAt);
+                
+                const today = new Date(); today.setHours(0,0,0,0);
+                const todayOrders = allOrders.filter(o => o.createdAt && o.createdAt.toDate() >= today && o.status !== 'cancelled');
+                const totalSales = todayOrders.reduce((sum, o) => sum + o.total, 0);
+                const elSales = document.getElementById('statSales'); if(elSales) elSales.innerText = `$${totalSales.toFixed(2)}`;
+                const elCount = document.getElementById('statOrders'); if(elCount) elCount.innerText = todayOrders.length;
+
+                const pendingCount = allOrders.filter(o => o.status === 'pending').length;
+                const badge = document.getElementById('badgePending');
+                if(badge) { if(pendingCount > 0) { badge.classList.remove('hidden'); badge.classList.add('inline-block'); } else { badge.classList.add('hidden'); } }
+
+                const list = document.getElementById('storeOrdersList');
+                if(list && view === 'orders') {
+                    let filtered = [];
+                    if (tab === 'pending') filtered = allOrders.filter(o => o.status === 'pending');
+                    else if (tab === 'active') filtered = allOrders.filter(o => ['preparing', 'ready'].includes(o.status));
+                    else filtered = allOrders.filter(o => ['delivered', 'cancelled'].includes(o.status));
+
+                    if(filtered.length === 0) {
+                        list.innerHTML = `<div class="flex flex-col items-center justify-center h-[50vh] text-gray-400 opacity-60"><i class="fas fa-clipboard-check text-6xl mb-4 text-gray-200"></i><p class="font-bold text-sm">No hay pedidos aquí</p></div>`;
+                    } else {
+                        list.innerHTML = filtered.map(o => {
+                            const timeStr = window.formatTime(o.createdAt);
+                            let actions = '';
+                            if(o.status === 'pending') {
+                                actions = `<div class="mt-4 flex gap-3"><button onclick="window.updateOrderStatus('${o.id}', 'cancelled')" class="px-4 py-3 rounded-lg font-bold text-sm text-gray-500 bg-gray-100 hover:bg-gray-200 transition">Rechazar</button><button onclick="window.updateOrderStatus('${o.id}', 'preparing')" class="flex-1 bg-uber-green text-white py-3 rounded-lg font-bold text-lg shadow-lg hover:bg-green-600 transition animate-pulse-fast">Aceptar Orden</button></div>`;
+                            } else if (o.status === 'preparing') {
+                                actions = `<button onclick="window.updateOrderStatus('${o.id}', 'ready')" class="mt-4 w-full bg-black text-white py-3 rounded-lg font-bold text-base hover:bg-gray-800 transition flex justify-between px-6"><span>Marcar Listo</span> <i class="fas fa-check"></i></button>`;
+                            } else if (o.status === 'ready') {
+                                actions = `<div class="mt-4 bg-green-50 border border-green-100 rounded-lg p-3 flex items-center justify-center gap-2 text-green-800 font-bold text-sm animate-pulse"><i class="fas fa-bicycle"></i> Esperando Repartidor</div>`;
+                            }
+                            return `<div class="bg-white rounded-xl p-5 shadow-[0_2px_15px_rgba(0,0,0,0.05)] border border-gray-100 relative overflow-hidden fade-in">${o.status === 'pending' ? '<div class="absolute top-0 left-0 w-1.5 h-full bg-uber-green"></div>' : ''}<div class="flex justify-between items-start mb-4"><div><div class="flex items-center gap-2 mb-1"><span class="font-mono text-xs font-bold text-gray-400">#${o.id.slice(0,5).toUpperCase()}</span><span class="text-xs font-bold text-gray-400">• ${timeStr}</span></div><h3 class="font-bold text-xl text-black leading-tight">${o.customerName}</h3><div class="text-xs text-blue-600 font-bold mt-1">${o.items.length} artículos</div></div><div class="text-right"><div class="font-bold text-lg">$${o.total.toFixed(2)}</div><div class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-500 font-bold uppercase inline-block mt-1">${o.paymentMethod === 'wallet' ? 'Tarjeta' : 'Efectivo'}</div></div></div><div class="border-t border-b border-gray-100 py-3 my-3 space-y-2">${o.items.map(i => `<div class="flex items-start gap-3"><div class="bg-gray-100 w-6 h-6 rounded flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</div><span class="text-base font-medium text-gray-800 leading-snug">${i}</span></div>`).join('')}</div>${actions}</div>`;
+                        }).join('');
+                    }
+                }
+            });
+            state.listeners.push(unsubOrders);
+
+            const unsubMenu = onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'menu_items'), where('restaurantId', '==', state.profile.storeId)), s => {
+                const list = document.getElementById('storeMenuList');
+                if(list && view === 'menu') {
+                    const items = s.docs.map(d => ({id: d.id, ...d.data()}));
+                    if(items.length === 0) {
+                        list.innerHTML = '<div class="text-center py-10 text-gray-400">Tu menú está vacío. Agrega items.</div>';
+                    } else {
+                        list.innerHTML = items.map(i => {
+                             const safeItem = encodeURIComponent(JSON.stringify(i));
+                            return `<div class="bg-white p-3 rounded-xl border border-gray-100 flex gap-4 items-center shadow-sm relative overflow-hidden group"><div class="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden shrink-0 border border-gray-200"><img src="${i.image}" class="w-full h-full object-cover"></div><div class="flex-1 min-w-0"><h4 class="font-bold text-base text-black truncate">${i.name}</h4><p class="text-xs text-gray-500 truncate mb-1">${i.description || 'Sin descripción'}</p><div class="font-bold text-sm">$${i.price}</div></div><button onclick="window.openStoreProductModal('${safeItem}')" class="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-black hover:bg-gray-200 active:scale-95 transition"><i class="fas fa-pen text-sm"></i></button></div>`;
+                        }).join('');
+                    }
+                }
+            });
+            state.listeners.push(unsubMenu);
+        }
+
+        // --- DRIVER PANEL ---
+        function renderDriverPanel(container) {
+            const driverDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'drivers', state.user.uid);
+            const unsubDriver = onSnapshot(driverDocRef, (driverSnap) => {
+                if (!driverSnap.exists()) { container.innerHTML = '<div class="p-10 text-center">Error: No tienes perfil de conductor activo. Contacta a soporte.</div>'; return; }
+                const driverData = driverSnap.data();
+                state.data.driverInfo = driverData; 
+                const menuPhoto = document.getElementById('driverMenuPhoto');
+                if (menuPhoto && driverData.registrationData && driverData.registrationData.face) { menuPhoto.src = driverData.registrationData.face; }
+                const isOnline = driverData.isOnline || false;
+                const regStatus = driverData.registrationStatus || 'none'; 
+                const scope = state.profile.driverScope || 'all';
+                const unsubOrders = onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'orders')), s => {
+                    const allOrders = s.docs.map(d => ({id: d.id, ...d.data()}));
+                    state.data.ordersCache = allOrders; 
+                    const myActiveOrders = allOrders.filter(o => o.status === 'delivering' && o.driverId === state.user.uid);
+                    const myActiveOrder = myActiveOrders.length > 0 ? myActiveOrders[0] : null;
+                    let availableOrders = [];
+                    if (isOnline && regStatus === 'verified') {
+                        availableOrders = allOrders.filter(o => {
+                            const isReady = o.status === 'ready';
+                            const isMyScope = scope === 'all' || scope === o.restaurantId;
+                            return isReady && isMyScope;
+                        });
+                    }
+                    const todayEarnings = allOrders.filter(o => o.status === 'delivered' && o.driverId === state.user.uid).reduce((sum, o) => sum + (o.total * 0.15), 0);
+                    const activeId = myActiveOrder ? myActiveOrder.id : null;
+                    if (activeId && state.data.lastActiveOrderId !== activeId) { state.ui.minimizedOrder = false; state.data.lastActiveOrderId = activeId; }
+
+                    if (myActiveOrder && !state.ui.minimizedOrder) {
+                        container.innerHTML = `<div class="relative h-full w-full bg-gray-200 flex flex-col font-sans"><div class="absolute inset-0 opacity-60" style="background-image: url('https://i.imgur.com/8yeK5Gq.png'); background-size: cover; background-position: center;"></div><div class="bg-uber-dark text-white p-4 pt-6 relative z-10 shadow-lg"><div class="flex items-start gap-4"><button onclick="window.minimizeOrder()" class="bg-white text-black w-12 h-12 flex items-center justify-center text-xl font-bold rounded-full shrink-0 active:scale-90 transition"><i class="fas fa-arrow-left"></i></button><div class="flex-1"><h2 class="text-lg font-bold leading-tight">Entregar a ${myActiveOrder.customerName}</h2><p class="text-gray-400 text-sm truncate">Destino del cliente</p></div><button onclick="window.open('https://waze.com/ul?q=${encodeURIComponent(state.ui.address || 'Destino')}')" class="bg-black border border-gray-600 p-2 rounded-full text-white w-10 h-10"><i class="fas fa-location-arrow"></i></button></div></div><div class="flex-1 relative z-0"><svg class="absolute inset-0 w-full h-full pointer-events-none" style="z-index:0"><path d="M 180 0 Q 200 200 200 400" stroke="#000" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="10,10"/></svg><div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-uber-black text-white w-12 h-12 rounded-full border-4 border-white shadow-xl flex items-center justify-center z-10"><i class="fas fa-bicycle"></i></div></div><div class="bg-white w-full rounded-t-[20px] p-5 pb-8 relative z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.1)] slide-up-sheet"><div class="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div><div class="flex justify-between items-center mb-6"><h3 class="font-bold text-2xl text-black">${myActiveOrder.customerName}</h3><div class="bg-gray-100 px-3 py-1 rounded-full font-bold text-sm"><i class="fas fa-shopping-bag text-uber-green mr-1"></i> ${myActiveOrder.items.length} items</div></div><div class="space-y-3 mb-6"><div class="flex items-center gap-4 text-gray-600"><i class="fas fa-store w-6 text-center"></i><span class="truncate text-sm">${myActiveOrder.restaurantName}</span></div><div class="flex items-center gap-4 text-gray-600"><i class="fas fa-map-marker-alt w-6 text-center"></i><span class="truncate text-sm">Dirección del cliente</span></div></div><div class="flex gap-3"><button class="w-12 h-12 bg-red-100 text-red-500 rounded-full flex items-center justify-center text-xl"><i class="fas fa-phone-alt"></i></button><button class="w-12 h-12 bg-gray-100 text-black rounded-full flex items-center justify-center text-xl"><i class="fas fa-comment-alt"></i></button><button onclick="window.finishOrder('${myActiveOrder.id}')" class="flex-1 bg-uber-green text-white rounded-full font-bold text-lg shadow-lg active:scale-[0.98] transition hover:bg-green-600">DESLIZAR PARA TERMINAR</button></div></div></div>`;
+                    } else {
+                        const hasOffer = isOnline && availableOrders.length > 0;
+                        const offer = hasOffer ? availableOrders[0] : null;
+                        const activeOrderBar = myActiveOrders.length > 0 ? `<div onclick="window.maximizeOrder()" class="mx-4 mb-4 bg-green-600 text-white p-4 rounded-xl shadow-lg flex items-center justify-between cursor-pointer animate-pulse"><div class="flex items-center gap-3"><div class="bg-white/20 w-10 h-10 rounded-full flex items-center justify-center"><i class="fas fa-bicycle"></i></div><div><div class="font-bold">${myActiveOrders.length > 1 ? `${myActiveOrders.length} Pedidos en Curso` : 'Pedido en Curso'}</div><div class="text-xs opacity-80">Toca para volver al mapa</div></div></div><i class="fas fa-chevron-right"></i></div>` : '';
+                        const centerUI = !isOnline ? `<div class="flex justify-center mb-8 fade-in"><button onclick="window.checkDriverRegistration('${regStatus}')" class="w-24 h-24 bg-blue-600 text-white rounded-full shadow-2xl border-4 border-white flex flex-col items-center justify-center active:scale-95 transition hover:bg-blue-700"><span class="text-xl font-bold">INICIAR</span></button></div><div class="bg-white rounded-xl p-4 shadow-sm text-center"><h3 class="font-bold text-black">Estás desconectado</h3><p class="text-xs text-gray-500">${regStatus === 'pending' ? 'Tu registro está en revisión.' : 'Conéctate para recibir pedidos.'}</p></div>` : hasOffer ? `<div class="bg-white rounded-xl p-0 shadow-2xl overflow-hidden slide-up-sheet border border-gray-200 relative"><div class="absolute top-0 left-0 right-0 h-1 bg-gray-100"><div class="h-full bg-black animate-[shimmer_2s_infinite] w-full"></div></div><div class="p-5 text-center border-b border-gray-100 bg-green-50"><h2 class="text-3xl font-bold text-black mb-1">$${(offer.total * 0.15).toFixed(2)}</h2><p class="text-xs font-bold text-gray-500 uppercase">Ganancia estimada</p></div><div class="p-5"><div class="flex items-start gap-3 mb-4"><div class="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center shrink-0 text-xs font-bold">1</div><div class="text-left"><h3 class="font-bold text-lg leading-none mb-1">${offer.restaurantName}</h3><p class="text-xs text-gray-500 line-clamp-1">Recoger pedido #${offer.id.slice(0,4)}</p></div></div><div class="flex items-start gap-3 mb-6"><div class="w-8 h-8 bg-gray-200 text-black rounded-full flex items-center justify-center shrink-0 text-xs"><i class="fas fa-map-marker-alt"></i></div><div class="text-left"><h3 class="font-bold text-lg leading-none mb-1 text-gray-500">Cliente</h3><p class="text-xs text-gray-500">Entrega de ${offer.items.length} artículos</p></div></div><div class="flex gap-3"><button class="bg-gray-200 text-black font-bold py-4 px-6 rounded-full text-sm">Ignorar</button><button onclick="window.acceptOrder('${offer.id}')" class="flex-1 bg-uber-green text-white font-bold py-4 rounded-full text-lg shadow-lg animate-pulse">Aceptar</button></div></div></div>` : myActiveOrders.length > 0 ? `` : `<div class="flex flex-col items-center justify-center mb-10 fade-in pointer-events-none"><div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div><div class="bg-black/80 backdrop-blur text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">Buscando pedidos...</div></div><div class="flex justify-center mb-4"><button onclick="window.toggleDriverOnline(false)" class="w-16 h-16 bg-red-500 text-white rounded-full shadow-lg border-4 border-white flex items-center justify-center active:scale-95 transition"><i class="fas fa-stop text-xl"></i></button></div>`;
+                        container.innerHTML = `<div class="relative h-full w-full bg-gray-100 flex flex-col font-sans overflow-hidden"><div class="absolute inset-0 ${isOnline ? 'opacity-100' : 'opacity-30 grayscale'} transition-all duration-500" style="background-image: url('https://i.imgur.com/8yeK5Gq.png'); background-size: cover; background-position: center;"></div><div class="absolute top-0 left-0 right-0 z-20 bg-transparent p-4 pt-8 flex flex-col items-center"><div class="bg-black text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-4 cursor-pointer min-w-[140px] justify-center border border-gray-800"><span class="font-bold text-lg">$${todayEarnings.toFixed(2)}</span></div>${isOnline ? '<div class="mt-2 bg-uber-green text-white text-[10px] font-bold px-2 py-0.5 rounded shadow animate-pulse">EN LÍNEA</div>' : ''}</div><button onclick="window.toggleDriverMenu(true)" class="absolute top-8 left-4 z-30 w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center text-black border border-gray-200"><i class="fas fa-bars"></i></button><button class="absolute top-8 right-4 z-30 w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center text-black border border-gray-200"><i class="fas fa-search"></i></button><div class="flex-1 flex flex-col justify-end relative z-20 pb-8 px-4">${centerUI}${activeOrderBar}</div></div>`;
+                    }
+                });
+                state.listeners.push(unsubOrders);
+            });
+            state.listeners.push(unsubDriver);
+        }
+
+        function renderAuth(container) { const isReg = state.authMode === 'register'; container.innerHTML = `<div class="p-8 h-full flex flex-col justify-center bg-white fade-in"><h1 class="text-4xl font-medium mb-8">Uber <span class="font-bold text-uber-green">Eats</span></h1><form id="authForm" class="space-y-4">${isReg ? '<input id="name" placeholder="Nombre completo" class="w-full p-3 bg-gray-100 rounded-lg outline-none" required>' : ''}<input id="email" type="email" placeholder="Correo electrónico" class="w-full p-3 bg-gray-100 rounded-lg outline-none" required><input id="pass" type="password" placeholder="Contraseña" class="w-full p-3 bg-gray-100 rounded-lg outline-none" required><button type="submit" class="w-full bg-uber-green text-white p-4 rounded-lg font-bold text-lg shadow-lg">${isReg?'Registrarse':'Entrar'}</button></form><button id="toggleAuth" class="mt-6 text-uber-green font-bold text-sm w-full text-center">${isReg?'¿Ya tienes cuenta? Inicia sesión':'¿Nuevo usuario? Crea una cuenta'}</button><div id="authError" class="text-red-500 text-center text-sm mt-4 hidden font-bold bg-red-50 p-2 rounded"></div></div>`; document.getElementById('authForm').onsubmit = async (e) => { e.preventDefault(); const em = document.getElementById('email').value, pw = document.getElementById('pass').value; const errDiv = document.getElementById('authError'); errDiv.classList.add('hidden'); try { if(isReg) { const cr = await createUserWithEmailAndPassword(auth, em, pw); const nm = document.getElementById('name').value; const role = em === CREATOR_EMAIL ? ROLES.CREATOR : ROLES.CLIENT; await setDoc(doc(db, 'artifacts', appId, 'users', cr.user.uid, 'profile', 'info'), { uid: cr.user.uid, email: em, name: nm, role, createdAt: serverTimestamp(), favorites: [], walletBalance: 0 }); } else await signInWithEmailAndPassword(auth, em, pw); } catch(err) { let msg = err.message; if(msg.includes('invalid-credential') || msg.includes('user-not-found')) msg = "Usuario no encontrado."; else if(msg.includes('wrong-password')) msg = "Contraseña incorrecta."; errDiv.innerText = msg; errDiv.classList.remove('hidden'); } }; document.getElementById('toggleAuth').onclick = () => { state.authMode = isReg ? 'login':'register'; render(); }; }
+
+        window.attachModalEvents = () => { /* No op */ };
+        
+        // --- DRIVER MENU FUNCTIONALITY ---
+        window.showDriverVehicle = () => { if (!state.data.driverInfo || !state.data.driverInfo.registrationData) { alert('No hay datos de vehículo'); return; } const info = state.data.driverInfo.registrationData; const content = document.getElementById('vehicleContent'); content.innerHTML = `<div class="flex items-center justify-between border-b pb-2"><span class="text-gray-500">Tipo</span><span class="font-bold capitalize">${info.vehicleType}</span></div><div class="flex items-center justify-between border-b pb-2"><span class="text-gray-500">Modelo</span><span class="font-bold">${info.vehicleModel}</span></div><div class="flex items-center justify-between border-b pb-2"><span class="text-gray-500">Color</span><span class="font-bold">${info.vehicleColor}</span></div><div class="mt-4"><p class="text-xs text-gray-500 mb-2">Placas</p><img src="${info.docPlate || 'https://via.placeholder.com/300x150?text=Placa'}" class="w-full rounded-lg"></div>`; const modal = document.getElementById('vehicleModal'); modal.classList.remove('hidden'); modal.classList.add('flex'); window.toggleDriverMenu(false); };
+        window.showDriverHistory = () => { const orders = state.data.ordersCache.filter(o => o.status === 'delivered' && o.driverId === state.user.uid); const list = document.getElementById('driverHistoryContent'); if (orders.length === 0) { list.innerHTML = '<div class="text-center py-10 text-gray-400">No has entregado pedidos aún.</div>'; } else { list.innerHTML = orders.map(o => { const dateStr = window.formatDate(o.createdAt); const earnings = (o.total * 0.15).toFixed(2); return `<div onclick="window.openOrderDetails('${o.id}')" class="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center cursor-pointer active:bg-gray-50 transition"><div><div class="font-bold text-black">${o.restaurantName}</div><div class="text-xs text-gray-500">${dateStr}</div></div><div class="text-right"><div class="font-bold text-green-600">+$${earnings}</div><div class="text-[10px] text-gray-400">Comisión</div></div></div>`; }).join(''); } const modal = document.getElementById('driverHistoryModal'); modal.classList.remove('hidden'); modal.classList.add('flex'); window.toggleDriverMenu(false); };
+        window.checkDriverRegistration = (status) => { if (status === 'verified') { window.toggleDriverOnline(true); } else if (status === 'pending') { alert('Tu registro está siendo revisado por el administrador. Te notificaremos cuando seas aprobado.'); } else { regStep = 1; window.updateRegModal(); const modal = document.getElementById('driverRegModal'); modal.classList.remove('hidden'); modal.classList.add('flex'); } };
+        window.closeDriverReg = () => { document.getElementById('driverRegModal').classList.remove('flex'); document.getElementById('driverRegModal').classList.add('hidden'); };
+        window.updateRegModal = () => { document.getElementById('regStep1').classList.add('hidden'); document.getElementById('regStep2').classList.add('hidden'); document.getElementById('regStep3').classList.add('hidden'); document.getElementById(`regStep${regStep}`).classList.remove('hidden'); document.getElementById('btnRegBack').classList.toggle('hidden', regStep === 1); document.getElementById('btnRegNext').classList.toggle('hidden', regStep === 3); document.getElementById('btnRegFinish').classList.toggle('hidden', regStep !== 3); };
+        window.nextRegStep = () => { if (regStep === 1) { if (!document.getElementById('regName').value || !document.getElementById('regCurp').value) return alert('Faltan datos'); } if (regStep === 2) { if (!document.getElementById('regVehModel').value || !document.getElementById('regVehPlate').value) return alert('Faltan datos del vehículo'); } if (regStep < 3) { regStep++; window.updateRegModal(); } };
+        window.prevRegStep = () => { if (regStep > 1) { regStep--; window.updateRegModal(); } };
+        window.finishRegistration = async () => { const faceUrl = document.getElementById('docFace').value; const data = { name: document.getElementById('regName').value, ap1: document.getElementById('regAp1').value, ap2: document.getElementById('regAp2').value, dob: document.getElementById('regDob').value, curp: document.getElementById('regCurp').value, rfc: document.getElementById('regRfc').value, vehicleType: document.getElementById('regVehType').value, vehicleModel: document.getElementById('regVehModel').value, vehicleColor: document.getElementById('regVehColor').value, vehiclePlate: document.getElementById('regVehPlate').value, ineFront: document.getElementById('docIneF').value, face: faceUrl, docPlate: document.getElementById('docPlate').value, submittedAt: serverTimestamp() }; try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'drivers', state.user.uid), { registrationStatus: 'pending', registrationData: data }); if (faceUrl) { await updateDoc(doc(db, 'artifacts', appId, 'users', state.user.uid, 'profile', 'info'), { profilePic: faceUrl }); } window.closeDriverReg(); alert('Registro enviado. Espera la aprobación del administrador.'); } catch (e) { console.error(e); alert('Error al enviar registro.'); } };
+        window.approveDriver = async (uid) => { if(confirm('¿Aprobar conductor?')) { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'drivers', uid), { registrationStatus: 'verified' }); window.showToast('Conductor Aprobado'); } };
+        window.minimizeOrder = () => { state.ui.minimizedOrder = true; render(); };
+        window.maximizeOrder = () => { state.ui.minimizedOrder = false; render(); };
+        window.toggleDriverOnline = async (shouldBeOnline) => { if (!state.user) return; const driverRef = doc(db, 'artifacts', appId, 'public', 'data', 'drivers', state.user.uid); try { await updateDoc(driverRef, { isOnline: shouldBeOnline }); } catch (e) { console.error(e); window.showToast("Error de conexión"); } };
+        window.toggleDriverMenu = (show) => { const menu = document.getElementById('driverMenuModal'); if (show) { if(state.profile) document.getElementById('driverNameMenu').innerText = state.profile.name || 'Conductor'; menu.classList.remove('hidden'); menu.classList.add('flex'); } else { menu.classList.add('hidden'); menu.classList.remove('flex'); } };
+
+        // --- CLIENT & SHARED FUNCTIONS ---
+        window.openOrderDetails = (id) => { const order = state.data.ordersCache.find(o => o.id === id); if (!order) return; const dateStr = window.formatDate(order.createdAt); const content = document.getElementById('orderDetailContent'); let statusLabel = order.status === 'delivered' ? 'Entregado' : 'En curso'; content.innerHTML = `<div class="text-center mb-6"><div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3"><i class="fas fa-store text-3xl text-gray-500"></i></div><h2 class="text-xl font-bold text-black">${order.restaurantName}</h2><p class="text-sm text-gray-500">${dateStr}</p></div><div class="bg-gray-50 p-4 rounded-xl mb-6"><div class="flex justify-between mb-2 border-b border-gray-200 pb-2"><span class="text-gray-600 text-sm">Estado</span><span class="font-bold text-sm uppercase">${statusLabel}</span></div><div class="flex justify-between mb-2"><span class="text-gray-600 text-sm">Método de Pago</span><span class="font-bold text-sm capitalize">${order.paymentMethod === 'wallet' ? 'Saldo TuzoEats' : 'Efectivo'}</span></div><div class="flex justify-between"><span class="text-gray-600 text-sm">ID Pedido</span><span class="font-mono text-xs text-gray-400">#${order.id.slice(0,8)}</span></div></div><h3 class="font-bold text-sm text-black mb-3 uppercase tracking-wider">Resumen</h3><div class="space-y-3 mb-6">${order.items.map(item => `<div class="flex items-start gap-3"><div class="w-6 h-6 bg-gray-100 rounded flex items-center justify-center text-xs font-bold shrink-0">1</div><div class="flex-1 text-sm text-gray-800">${item}</div></div>`).join('')}</div><div class="border-t border-gray-100 pt-4 flex justify-between items-center"><span class="font-bold text-lg">Total Pagado</span><span class="font-bold text-2xl">$${order.total.toFixed(2)}</span></div><button onclick="window.closeOrderDetails()" class="w-full bg-black text-white py-4 rounded-xl font-bold mt-8">Cerrar</button>`; const modal = document.getElementById('orderDetailModal'); modal.classList.remove('hidden'); modal.classList.add('flex'); };
+        window.closeOrderDetails = () => { const modal = document.getElementById('orderDetailModal'); modal.classList.add('hidden'); modal.classList.remove('flex'); };
+        window.openTransactionDetails = (id) => { const t = state.data.walletCache.find(x => x.id === id); if (!t) return; const dateStr = window.formatDate(t.createdAt); const content = document.getElementById('transactionDetailContent'); content.innerHTML = `<div class="w-16 h-16 ${t.status === 'approved' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'} rounded-full flex items-center justify-center text-2xl mb-4"><i class="fas ${t.method === 'deposito' ? 'fa-money-bill-wave' : 'fa-university'}"></i></div><h2 class="text-2xl font-bold text-black mb-1">Recarga de Saldo</h2><p class="text-sm text-gray-500 mb-6">${dateStr}</p><div class="text-4xl font-bold mb-8">+$${t.amount.toFixed(2)}</div><div class="w-full space-y-4 text-left"><div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500 text-sm">Estado</span><span class="font-bold text-sm uppercase ${t.status==='approved'?'text-green-600':'text-yellow-600'}">${t.status}</span></div><div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500 text-sm">Método</span><span class="font-bold text-sm capitalize">${t.method}</span></div><div class="flex justify-between pb-2"><span class="text-gray-500 text-sm">Referencia</span><span class="font-mono text-xs text-gray-400">#${t.id.slice(0,8)}</span></div></div>`; const modal = document.getElementById('transactionDetailModal'); modal.classList.remove('hidden'); modal.classList.add('flex'); };
+        window.closeTransactionDetails = () => { const modal = document.getElementById('transactionDetailModal'); modal.classList.add('hidden'); modal.classList.remove('flex'); };
+        window.confirmTopUp = async () => { const amount = document.getElementById('topUpAmount').value; const method = document.querySelector('input[name="payMethod"]:checked').value; if(!amount || amount <= 0) return window.showToast('Ingresa un monto válido'); await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'topups'), { uid: state.user.uid, name: state.profile.name, amount: parseFloat(amount), method: method, status: 'pending', createdAt: serverTimestamp() }); const s1 = document.getElementById('step1'); const s2 = document.getElementById('step2'); s1.classList.add('hidden'); s2.classList.remove('hidden'); s2.classList.add('flex'); if (method === 'deposito') { s2.innerHTML = `<div class="bg-yellow-50 p-4 rounded-xl border border-yellow-200 mb-4"><h3 class="font-bold text-yellow-800 mb-1">Instrucciones de Depósito</h3><p class="text-sm text-yellow-700">Menciona al cajero que harás un depósito a tarjeta.</p></div><div class="text-center"><p class="text-gray-500 text-sm mb-2">Número de Tarjeta</p><div class="text-3xl font-mono font-bold tracking-widest mb-2 select-all">4169 1614 4121 9283</div><p class="text-xs text-gray-400">Banorte / STP</p></div><div class="mt-auto bg-blue-50 p-3 rounded-lg flex gap-3 items-start"><i class="fas fa-info-circle text-blue-500 mt-1"></i><p class="text-xs text-blue-700">Tu pago será confirmado automáticamente por nuestro servidor. Esto puede demorar de 2 a 5 minutos.</p></div><button onclick="document.getElementById('topUpModal').classList.add('hidden'); document.getElementById('topUpModal').classList.remove('flex')" class="w-full bg-black text-white py-4 rounded-xl font-bold mt-4">Entendido</button>`; } else { const ref = 'TE-' + Math.floor(100000 + Math.random() * 900000); s2.innerHTML = `<div class="text-center mb-6"><div class="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3"><i class="fas fa-university text-2xl text-gray-600"></i></div><h3 class="font-bold text-xl">Datos para Transferencia</h3><p class="text-sm text-gray-500">Usa tu banca móvil para pagar</p></div><div class="space-y-4"><div class="flex justify-between border-b pb-2"><span class="text-gray-500">Banco</span><span class="font-bold">STP</span></div><div class="flex justify-between border-b pb-2"><span class="text-gray-500">CLABE</span><span class="font-bold font-mono select-all">12357592959394</span></div><div class="flex justify-between border-b pb-2"><span class="text-gray-500">Beneficiario</span><span class="font-bold">TuzoEats</span></div><div class="flex justify-between border-b pb-2"><span class="text-gray-500">Concepto</span><span class="font-bold">Comida</span></div><div class="flex justify-between border-b pb-2"><span class="text-gray-500">Referencia</span><span class="font-bold text-uber-green select-all">${ref}</span></div></div><div class="mt-auto bg-blue-50 p-3 rounded-lg flex gap-3 items-start"><i class="fas fa-clock text-blue-500 mt-1"></i><p class="text-xs text-blue-700">Una vez realizada la transferencia, el saldo se reflejará en unos minutos.</p></div><button onclick="document.getElementById('topUpModal').classList.add('hidden'); document.getElementById('topUpModal').classList.remove('flex')" class="w-full bg-black text-white py-4 rounded-xl font-bold mt-4">Listo</button>`; } };
+        window.approveTopUp = async (reqId, uid, amount) => { try { await updateDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info'), { walletBalance: increment(amount) }); await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'topups', reqId), { status: 'approved' }); window.showToast('Recarga aprobada con éxito'); } catch(e) { window.showToast('Error al aprobar recarga'); } };
+        window.openProductModal = (encodedItem) => { try { const item = JSON.parse(decodeURIComponent(encodedItem)); currentProduct = item; currentQty = 1; document.getElementById('pmImage').src = item.image; document.getElementById('pmName').innerText = item.name; document.getElementById('pmDesc').innerText = item.description || ''; document.getElementById('pmPrice').innerText = `$${item.price}`; document.getElementById('pmNotes').value = ''; window.updateProductUI(); const modal = document.getElementById('productModal'); modal.classList.remove('hidden'); modal.classList.add('flex'); } catch (e) { console.error("Error abriendo modal", e); } };
+        window.closeProductModal = () => { const modal = document.getElementById('productModal'); if(modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); } currentProduct = null; };
+        window.updateProductQty = (change) => { const newQty = currentQty + change; if (newQty >= 1) { currentQty = newQty; window.updateProductUI(); } };
+        window.updateProductUI = () => { if(!currentProduct) return; document.getElementById('pmQty').innerText = currentQty; const total = (parseFloat(currentProduct.price) * currentQty).toFixed(2); document.getElementById('pmBtnTotal').innerText = `$${total}`; };
+        window.confirmAddToOrder = () => { if (!currentProduct) return; if(state.data.cart.length && state.data.cart[0].restaurantId !== state.data.selectedRestaurant.id) { if(!confirm('¿Quieres comenzar un nuevo pedido? Tu carrito actual se vaciará porque es de otro restaurante.')) return; state.data.cart = []; } const notes = document.getElementById('pmNotes').value; for(let i=0; i < currentQty; i++) { state.data.cart.push({ id: currentProduct.id, name: currentProduct.name + (notes ? ` (Nota: ${notes})` : ''), price: currentProduct.price, restaurantId: state.data.selectedRestaurant.id, restaurantName: state.data.selectedRestaurant.name }); } window.showToast(`Agregado: ${currentQty} x ${currentProduct.name}`); window.closeProductModal(); };
+        window.setPaymentMethod = (m) => { state.ui.paymentMethod = m; render(); };
+        window.placeOrder = async () => { const method = state.ui.paymentMethod; if (!method) return window.showToast('Selecciona un método de pago'); if(!state.data.cart.length) return; const total = state.data.cart.reduce((a,b)=>a+parseFloat(b.price),0); if (method === 'wallet') { if ((state.profile.walletBalance || 0) < total) { alert('Saldo insuficiente. Se seleccionó Pago en Efectivo.'); state.ui.paymentMethod = 'cash'; render(); return; } await updateDoc(doc(db, 'artifacts', appId, 'users', state.user.uid, 'profile', 'info'), { walletBalance: increment(-total) }); } await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'orders'), { customerId: state.user.uid, customerName: state.profile.name, restaurantId: state.data.cart[0].restaurantId, restaurantName: state.data.cart[0].restaurantName, items: state.data.cart.map(i=>i.name), total: total, status: 'pending', driverId: null, paymentMethod: method, createdAt: serverTimestamp() }); state.data.cart = []; window.setClientView('orders'); window.showToast('Pedido enviado'); };
+        window.handleCentralButton = () => { window.setClientView('tracking'); };
+        window.logout = () => { state.listeners.forEach(l => l()); state.listeners = []; signOut(auth).then(() => window.location.reload()); };
+        window.setClientView = (v) => { state.clientView = v; render(); };
+        window.setStoreView = (v) => { state.storeView = v; render(); };
+        window.setStoreTab = (t) => { state.storeTab = t; render(); };
+        window.setDeliveryMode = (m) => { state.ui.deliveryMode = m; render(); };
+        window.setCategory = (c) => { state.ui.selectedCategory = c; render(); };
+        window.trySwitchToDriver = () => { if(state.profile.role === ROLES.DRIVER || state.profile.role === ROLES.CREATOR) { renderDriverPanel(document.getElementById('dynamic-content')); window.showToast('Modo Repartidor Activado'); } else window.showToast('No eres conductor'); };
+        window.selectRestaurant = async (id) => { const s = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'restaurants', id)); if(s.exists()) { state.data.selectedRestaurant = {id: s.id, ...s.data()}; window.setClientView('restaurant'); } };
+        window.toggleFavorite = async (id) => { if(!state.user) return; const ref = doc(db, 'artifacts', appId, 'users', state.user.uid, 'profile', 'info'); const isFav = state.data.favorites.includes(id); if(isFav) state.data.favorites = state.data.favorites.filter(x=>x!==id); else state.data.favorites.push(id); render(); await updateDoc(ref, { favorites: isFav ? arrayRemove(id) : arrayUnion(id) }); };
+        window.removeFromCart = (i) => { state.data.cart.splice(i,1); render(); };
+        window.acceptOrder = (id) => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', id), { status: 'delivering', driverId: state.user.uid });
+        window.finishOrder = (id) => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', id), { status: 'delivered' });
+        
+        // --- STORE & ADMIN FUNCTIONS ---
+        window.updateOrderStatus = async (id, status) => { try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', id), { status: status }); window.showToast(`Orden ${status === 'preparing' ? 'Aceptada' : status}`); } catch(e) { window.showToast('Error al actualizar'); } };
+        window.openStoreProductModal = (encodedItem) => { const modal = document.getElementById('storeProductModal'); const btnDel = document.getElementById('btnDeleteProd'); if(encodedItem) { const item = JSON.parse(decodeURIComponent(encodedItem)); tempProductData = item; document.getElementById('spName').value = item.name; document.getElementById('spDesc').value = item.description || ''; document.getElementById('spPrice').value = item.price; document.getElementById('spImg').value = item.image; document.getElementById('spImgPrev').src = item.image; btnDel.classList.remove('hidden'); } else { tempProductData = null; document.getElementById('spName').value = ''; document.getElementById('spDesc').value = ''; document.getElementById('spPrice').value = ''; document.getElementById('spImg').value = ''; document.getElementById('spImgPrev').src = 'https://via.placeholder.com/150'; btnDel.classList.add('hidden'); } document.getElementById('spImg').oninput = (e) => document.getElementById('spImgPrev').src = e.target.value || 'https://via.placeholder.com/150'; modal.classList.remove('hidden'); modal.classList.add('flex'); };
+        window.closeStoreProductModal = () => { document.getElementById('storeProductModal').classList.add('hidden'); document.getElementById('storeProductModal').classList.remove('flex'); tempProductData = null; };
+        window.saveStoreProduct = async () => { const name = document.getElementById('spName').value; const desc = document.getElementById('spDesc').value; const price = document.getElementById('spPrice').value; const img = document.getElementById('spImg').value || 'https://source.unsplash.com/random/200x200/?food'; if(!name || !price) return window.showToast('Falta nombre o precio'); const data = { restaurantId: state.profile.storeId, name, description: desc, price, image: img, createdAt: serverTimestamp() }; try { if(tempProductData) { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'menu_items', tempProductData.id), data); window.showToast('Actualizado'); } else { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'menu_items'), data); window.showToast('Creado'); } window.closeStoreProductModal(); } catch(e) { console.error(e); window.showToast('Error'); } };
+        window.deleteStoreProduct = async () => { if(!tempProductData) return; if(confirm('¿Eliminar producto?')) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'menu_items', tempProductData.id)); window.showToast('Eliminado'); window.closeStoreProductModal(); } };
+        
+        window.saveRest = async () => { const name = document.getElementById('nName').value; const img = document.getElementById('nImg').value || 'https://source.unsplash.com/random/400x300/?restaurant'; const cat = document.getElementById('nCat').value; const time = document.getElementById('nTime').value || '20-30 min'; const rate = document.getElementById('nRate').value || '4.5'; const fee = document.getElementById('nFee').value; const price = document.getElementById('nPrice').value; if (!name) return window.showToast('Falta el nombre'); const data = { name, image: img, category: cat, deliveryTime: time, rating: rate, deliveryFee: fee && fee > 0 ? fee : 0, priceRange: price }; if (state.ui.editingId) { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'restaurants', state.ui.editingId), data); window.showToast('Restaurante actualizado'); window.cancelEdit(); } else { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'restaurants'), { ...data, ownerId: null, createdAt: serverTimestamp() }); window.showToast('¡Restaurante Publicado!'); document.getElementById('nName').value = ''; } };
+        window.editRest = (id) => { const r = state.data.adminRestaurants.find(x => x.id === id); if(r) { state.ui.editingId = id; state.tempEditData = r; render(); } };
+        window.cancelEdit = () => { state.ui.editingId = null; state.tempEditData = null; render(); };
+        window.deleteRest = async (id) => { if(confirm('¿Eliminar restaurante?')) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'restaurants', id)); window.showToast('Eliminado'); }};
+        window.assignStoreRole = async () => { const uid = document.getElementById('targetUid').value; const restId = document.getElementById('selAvailableRest').value; if(!uid) return window.showToast('Falta UID'); if(!restId) return window.showToast('Selecciona restaurante'); try { await updateDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info'), { role: ROLES.STORE, storeId: restId }); await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'restaurants', restId), { ownerId: uid }); window.showToast('Dueño asignado'); document.getElementById('targetUid').value = ''; } catch(e) { window.showToast('Error en UID'); } };
+        window.assignDriverRole = async () => { const uid = document.getElementById('targetUid').value; const scope = document.getElementById('selDriverRest').value; if(!uid) return window.showToast('Falta UID'); try { await updateDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info'), { role: ROLES.DRIVER, driverScope: scope }); await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'drivers', uid), { uid: uid, scope: scope, assignedAt: serverTimestamp() }); window.showToast('Repartidor asignado'); document.getElementById('targetUid').value = ''; } catch(e) { console.error(e); window.showToast('Error de UID o Permisos'); } };
+        window.toggleAddressModal = (show) => { const modal = document.getElementById('addressModal'); if (show) { modal.classList.remove('hidden'); modal.classList.add('flex'); document.getElementById('addressInput').focus(); } else { modal.classList.add('hidden'); modal.classList.remove('flex'); } };
+        window.confirmAddress = () => { const val = document.getElementById('addressInput').value; if(val) window.updateAddress(val); };
+        window.updateAddress = (addr) => { state.ui.address = addr; window.toggleAddressModal(false); const lbl = document.getElementById('addressLabel'); if(lbl) lbl.textContent = addr; };
+        window.showToast = (msg) => { const c = document.getElementById('toast-container'); const el = document.createElement('div'); el.className = "bg-uber-dark text-white px-4 py-2 rounded-full shadow-xl text-xs font-bold fade-in flex items-center gap-2"; el.innerHTML = `<i class="fas fa-info-circle"></i> ${msg}`; c.appendChild(el); setTimeout(() => el.remove(), 3000); };
+
+        onAuthStateChanged(auth, u => { state.listeners.forEach(l=>l()); state.listeners = []; if(!u) { state.user = null; state.profile = null; state.view = 'auth'; render(); setTimeout(() => { const el = document.getElementById('loading'); if(el) el.remove(); }, 100); return; } state.user = u; state.listeners.push(onSnapshot(doc(db, 'artifacts', appId, 'users', u.uid, 'profile', 'info'), async s => { if(s.exists()) { state.profile = s.data(); state.data.favorites = s.data().favorites || []; state.view = 'app'; render(); setTimeout(() => { const el = document.getElementById('loading'); if(el) el.remove(); }, 100); } else { const role = u.email === CREATOR_EMAIL ? ROLES.CREATOR : ROLES.CLIENT; await setDoc(doc(db, 'artifacts', appId, 'users', u.uid, 'profile', 'info'), { uid: u.uid, email: u.email, name: u.email.split('@')[0], role, createdAt: serverTimestamp(), favorites: [], walletBalance: 0 }); } })); });
+    </script>
+</body>
+</html>
